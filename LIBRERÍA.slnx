@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Controladora/Controladora.csproj" Id="37c71e8d-6d32-43c8-b416-bf85b2373e27" />
+  <Project Path="Modelo/Modelo.csproj" />
+  <Project Path="Servicios/Servicios.csproj" Id="465a2fa3-a31c-4f98-9dee-ce2e8f792423" />
+  <Project Path="Vista/Vista.csproj" />
+</Solution>
