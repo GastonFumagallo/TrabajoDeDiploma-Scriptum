@@ -178,6 +178,24 @@ namespace Controladora
                 Precio = p.LIB_PrecioVenta,
             }).ToList();
         }
+        /// <summary>Versión async con contexto propio y sin tracking, para no bloquear la UI.</summary>
+        public async Task<List<LibroDTO>> ObtenerLibrosGridAsync(CancellationToken ct = default)
+        {
+            await using var db = new Libreria();
+            return await db.Libros.AsNoTracking()
+            .Select(p => new LibroDTO
+            {
+                LIBDTO_ID = p.LIB_ID,
+                Titulo = p.LIB_Titulo,
+                Autor = p.LIB_Autor,
+                Descripcion = p.LIB_Descripcion,
+                Editorial = p.LIB_Editorial,
+                Stock = p.LIB_Stock,
+                AñoPublicacion = p.LIB_AñoPublicacion,
+                Genero = p.LIB_Genero.GEN_Nombre,
+                Precio = p.LIB_PrecioVenta,
+            }).ToListAsync(ct);
+        }
         public string EliminarLibro(Libro libroSeleccionado)
         {
             try

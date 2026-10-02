@@ -88,5 +88,20 @@ namespace Controladora
             }).ToList();
         }
 
+        /// <summary>Versión async con contexto propio y sin tracking, para no bloquear la UI.</summary>
+        public async Task<List<ClienteDTO>> ObtenerClientesGridAsync(CancellationToken ct = default)
+        {
+            await using var db = new Libreria();
+            return await db.Clientes.AsNoTracking()
+            .Select(p => new ClienteDTO
+            {
+                CLIDTO_ID = p.CLI_Persona.PER_ID,
+                Nombre = p.CLI_Persona.PER_Nombre,
+                DNI = p.CLI_Persona.PER_DNI,
+                Email = p.CLI_Persona.PER_Mail,
+                Telefono = p.CLI_Persona.PER_Telefono,
+            }).ToListAsync(ct);
+        }
+
     }
 }
