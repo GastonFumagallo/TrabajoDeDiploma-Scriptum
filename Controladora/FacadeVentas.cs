@@ -1,10 +1,33 @@
-﻿using Controladora;
+using Controladora;
+using Controladora.MetodoPagoStrategy;
+using Microsoft.EntityFrameworkCore;
+using Modelo.Contexto;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Modelo
 {
+    /// <summary>
+    /// Resultado de intentar registrar una venta. Si <see cref="Exito"/> es false,
+    /// <see cref="Mensaje"/> explica el motivo (stock insuficiente, cliente inexistente, etc.)
+    /// y no se persistió nada.
+    /// </summary>
+    public sealed class ResultadoVenta
+    {
+        public bool Exito { get; private init; }
+        public string Mensaje { get; private init; } = string.Empty;
+        public int VentaId { get; private init; }
+        public decimal Subtotal { get; private init; }
+        public decimal Total { get; private init; }
+
+        public static ResultadoVenta Ok(int ventaId, decimal subtotal, decimal total) =>
+            new() { Exito = true, VentaId = ventaId, Subtotal = subtotal, Total = total };
+
+        public static ResultadoVenta Error(string mensaje) =>
+            new() { Exito = false, Mensaje = mensaje };
+    }
+
     public class FacadeVentas
     {
         private static FacadeVentas instancia;
@@ -22,17 +45,139 @@ namespace Modelo
 
         private FacadeVentas() { }
 
-        public Venta RealizarVenta(ClienteDTO cliente, List<LibroVentaDTO> librosVenta,MetodoPago metodoPago)
+        /// <summary>
+        /// Registra la venta completa (cabecera, detalles y rebaja de stock) en una única transacción.
+        /// Usa un DbContext propio y de vida corta para no compartir el contexto global
+        /// (que no es thread-safe y acumula entidades trackeadas).
+        /// </summary>
+        /// <param name="clientePersonaId">Valor de <see cref="ClienteDTO.CLIDTO_ID"/> (es el PER_ID de la persona).</param>
+        public async Task<ResultadoVenta> RealizarVentaAsync(int clientePersonaId, int metodoPagoId,
+            IReadOnlyCollection<LibroVentaDTO> librosVenta, CancellationToken ct = default)
         {
-            decimal total = librosVenta.Sum(x => x.Precio * x.Cantidad);
+            if (librosVenta == null || librosVenta.Count == 0)
+                return ResultadoVenta.Error("La venta no tiene productos.");
 
-            Venta venta = ControladoraVentas.Instancia.CrearVenta(cliente,librosVenta,metodoPago, total);
-            if (venta != null)
+            // Consolidamos por libro por si llegara el mismo ID en dos líneas.
+            var cantidades = librosVenta
+                .GroupBy(l => l.LVDTO_ID)
+                .ToDictionary(g => g.Key, g => g.Sum(l => l.Cantidad));
+
+            if (cantidades.Values.Any(c => c <= 0))
+                return ResultadoVenta.Error("Todas las cantidades deben ser mayores a cero.");
+
+            await using var db = new Libreria();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            var cliente = await db.Clientes.FirstOrDefaultAsync(c => c.CLI_Persona.PER_ID == clientePersonaId, ct);
+            if (cliente == null)
+                return ResultadoVenta.Error("El cliente seleccionado ya no existe.");
+
+            var metodoPago = await db.MetodosPago.FirstOrDefaultAsync(m => m.MP_ID == metodoPagoId, ct);
+            if (metodoPago == null)
+                return ResultadoVenta.Error("El método de pago seleccionado ya no existe.");
+
+            var ids = cantidades.Keys.ToList();
+            var libros = await db.Libros.Where(l => ids.Contains(l.LIB_ID)).ToDictionaryAsync(l => l.LIB_ID, ct);
+            if (libros.Count != ids.Count)
+                return ResultadoVenta.Error("Uno o más libros de la venta ya no existen.");
+
+            // Rebaja de stock atómica: el UPDATE sólo afecta la fila si todavía hay stock suficiente.
+            // Así dos cajas que venden el mismo libro a la vez no pueden dejar stock negativo.
+            foreach (var (libroId, cantidad) in cantidades)
             {
-                ControladoraLibros.Instancia.ModificarStock(librosVenta);
-                ControladoraDetallesVenta.Instancia.crearDetalles(venta, librosVenta);
+                int filas = await db.Libros
+                    .Where(l => l.LIB_ID == libroId && l.LIB_Stock >= cantidad)
+                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Stock, l => l.LIB_Stock - cantidad), ct);
+
+                if (filas == 0)
+                {
+                    await tx.RollbackAsync(ct);
+                    return ResultadoVenta.Error($"Stock insuficiente para '{libros[libroId].LIB_Titulo}'.");
+                }
             }
-            return venta;
+
+            // El precio se toma de la base, no de la grilla: la UI puede estar desactualizada.
+            decimal subtotal = cantidades.Sum(kv => libros[kv.Key].LIB_PrecioVenta * kv.Value);
+            decimal total = Math.Round(MetodoPagoStrategyFactory.Obtener(metodoPago).CalcularTotal(subtotal), 2);
+
+            var venta = new Venta
+            {
+                VEN_Fecha = DateTime.Now,
+                CLI_ID = cliente.CLI_ID,
+                VEN_Cliente = cliente,
+                MP_ID = metodoPago.MP_ID,
+                VEN_MetodoPago = metodoPago,
+                VEN_Total = total,
+            };
+
+            foreach (var (libroId, cantidad) in cantidades)
+            {
+                venta.VEN_Detalles.Add(new DetalleVenta
+                {
+                    DV_Venta = venta,
+                    LIB_ID = libroId,
+                    DV_Libro = libros[libroId],
+                    DV_Cantidad = cantidad,
+                    DV_PrecioUnitario = libros[libroId].LIB_PrecioVenta,
+                });
+            }
+
+            db.Ventas.Add(venta);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return ResultadoVenta.Ok(venta.VEN_ID, subtotal, total);
+        }
+
+        /// <summary>
+        /// Anula una venta (baja lógica) y devuelve al stock las unidades vendidas, todo en una transacción.
+        /// La venta no se borra: queda en el historial con fecha, motivo y usuario de la anulación.
+        /// </summary>
+        public async Task<ResultadoVenta> AnularVentaAsync(int ventaId, string motivo, string usuario, CancellationToken ct = default)
+        {
+            motivo = motivo?.Trim() ?? string.Empty;
+            if (motivo.Length < 5)
+                return ResultadoVenta.Error("Indique un motivo de anulación (al menos 5 caracteres).");
+            if (motivo.Length > 250)
+                motivo = motivo[..250];
+
+            await using var db = new Libreria();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            // UPDATE condicional: si dos usuarios anulan la misma venta a la vez, sólo uno afecta la fila,
+            // y por lo tanto el stock se repone una única vez.
+            var ahora = DateTime.Now;
+            int filas = await db.Ventas
+                .Where(v => v.VEN_ID == ventaId && !v.VEN_Anulada)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(v => v.VEN_Anulada, true)
+                    .SetProperty(v => v.VEN_FechaAnulacion, ahora)
+                    .SetProperty(v => v.VEN_MotivoAnulacion, motivo)
+                    .SetProperty(v => v.VEN_UsuarioAnulacion, usuario), ct);
+
+            if (filas == 0)
+            {
+                bool existe = await db.Ventas.AnyAsync(v => v.VEN_ID == ventaId, ct);
+                return ResultadoVenta.Error(existe ? "La venta ya estaba anulada." : "La venta no existe.");
+            }
+
+            var detalles = await db.DetallesVenta.AsNoTracking()
+                .Where(d => d.VEN_ID == ventaId)
+                .GroupBy(d => d.LIB_ID)
+                .Select(g => new { LibroId = g.Key, Cantidad = g.Sum(d => d.DV_Cantidad) })
+                .ToListAsync(ct);
+
+            foreach (var d in detalles)
+            {
+                await db.Libros
+                    .Where(l => l.LIB_ID == d.LibroId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Stock, l => l.LIB_Stock + d.Cantidad), ct);
+            }
+
+            decimal total = await db.Ventas.Where(v => v.VEN_ID == ventaId).Select(v => v.VEN_Total).FirstAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return ResultadoVenta.Ok(ventaId, total, total);
         }
     }
 }

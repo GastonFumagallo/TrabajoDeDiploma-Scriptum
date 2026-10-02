@@ -1,4 +1,4 @@
-﻿using Modelo;
+using Modelo;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,18 +9,22 @@ namespace Controladora.MetodoPagoStrategy
     {
         public static IMetodoPagoStrategy Obtener(MetodoPago metodoPago)
         {
-            switch (metodoPago.MP_Nombre.ToUpper())
+            // Se compara en mayúsculas contra etiquetas en mayúsculas: antes se hacía ToUpper()
+            // contra "Efectivo", "Tarjeta de debito", etc., y nunca coincidía (siempre caía en Efectivo).
+            switch (metodoPago?.MP_Nombre?.Trim().ToUpperInvariant())
             {
-                case "Efectivo":
+                case "EFECTIVO":
                     return new EfectivoStrategy();
 
-                case "Tarjeta de debito":
+                case "TARJETA DE DEBITO":
+                case "TARJETA DE DÉBITO":
                     return new DebitoStrategy();
 
-                case "Tarjeta de credito":
+                case "TARJETA DE CREDITO":
+                case "TARJETA DE CRÉDITO":
                     return new CreditoStrategy();
 
-                case "Transferencia":
+                case "TRANSFERENCIA":
                     return new TransferenciaStrategy();
 
                 default:

@@ -46,6 +46,13 @@
             dgvVentas = new DataGridView();
             btnSalir = new Button();
             btnVerTicket = new Button();
+            cbEstado = new ComboBox();
+            btnAnularVenta = new Button();
+            btnExportar = new Button();
+            lblResumen = new Label();
+            btnPaginaAnterior = new Button();
+            lblPagina = new Label();
+            btnPaginaSiguiente = new Button();
             panelSuperior.SuspendLayout();
             gbFiltrarFecha.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvVentas).BeginInit();
@@ -67,6 +74,7 @@
             panelSuperior.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panelSuperior.BackColor = SystemColors.ControlLightLight;
             panelSuperior.Controls.Add(btnVerTicket);
+            panelSuperior.Controls.Add(cbEstado);
             panelSuperior.Controls.Add(gbFiltrarFecha);
             panelSuperior.Controls.Add(checkFiltrarPorFecha);
             panelSuperior.Controls.Add(btnVerDetalles);
@@ -259,7 +267,79 @@
             btnVerTicket.Text = "Ver ticket";
             btnVerTicket.UseVisualStyleBackColor = false;
             btnVerTicket.Click += btnVerTicket_Click;
-            // 
+            //
+            // cbEstado
+            //
+            cbEstado.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbEstado.Location = new Point(395, 88);
+            cbEstado.Name = "cbEstado";
+            cbEstado.Size = new Size(176, 28);
+            cbEstado.TabIndex = 11;
+            //
+            // btnAnularVenta
+            //
+            btnAnularVenta.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnAnularVenta.BackColor = SystemColors.Control;
+            btnAnularVenta.Location = new Point(12, 673);
+            btnAnularVenta.Name = "btnAnularVenta";
+            btnAnularVenta.Size = new Size(120, 68);
+            btnAnularVenta.TabIndex = 11;
+            btnAnularVenta.Text = "Anular venta";
+            btnAnularVenta.UseVisualStyleBackColor = false;
+            //
+            // btnExportar
+            //
+            btnExportar.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnExportar.BackColor = SystemColors.Control;
+            btnExportar.Location = new Point(138, 673);
+            btnExportar.Name = "btnExportar";
+            btnExportar.Size = new Size(120, 68);
+            btnExportar.TabIndex = 12;
+            btnExportar.Text = "Exportar listado";
+            btnExportar.UseVisualStyleBackColor = false;
+            //
+            // lblResumen
+            //
+            lblResumen.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblResumen.AutoSize = true;
+            lblResumen.Location = new Point(276, 697);
+            lblResumen.Name = "lblResumen";
+            lblResumen.Size = new Size(0, 20);
+            lblResumen.TabIndex = 13;
+            lblResumen.Tag = "BLANCO";
+            //
+            // btnPaginaAnterior
+            //
+            btnPaginaAnterior.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnPaginaAnterior.BackColor = SystemColors.Control;
+            btnPaginaAnterior.Location = new Point(980, 690);
+            btnPaginaAnterior.Name = "btnPaginaAnterior";
+            btnPaginaAnterior.Size = new Size(60, 34);
+            btnPaginaAnterior.TabIndex = 14;
+            btnPaginaAnterior.Text = "◀";
+            btnPaginaAnterior.UseVisualStyleBackColor = false;
+            //
+            // lblPagina
+            //
+            lblPagina.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            lblPagina.Location = new Point(1046, 690);
+            lblPagina.Name = "lblPagina";
+            lblPagina.Size = new Size(160, 34);
+            lblPagina.TabIndex = 15;
+            lblPagina.Tag = "BLANCO";
+            lblPagina.TextAlign = ContentAlignment.MiddleCenter;
+            //
+            // btnPaginaSiguiente
+            //
+            btnPaginaSiguiente.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnPaginaSiguiente.BackColor = SystemColors.Control;
+            btnPaginaSiguiente.Location = new Point(1212, 690);
+            btnPaginaSiguiente.Name = "btnPaginaSiguiente";
+            btnPaginaSiguiente.Size = new Size(60, 34);
+            btnPaginaSiguiente.TabIndex = 16;
+            btnPaginaSiguiente.Text = "▶";
+            btnPaginaSiguiente.UseVisualStyleBackColor = false;
+            //
             // FrmGestionarVentas
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -267,6 +347,12 @@
             BackColor = SystemColors.Control;
             ClientSize = new Size(1427, 753);
             ControlBox = false;
+            Controls.Add(btnPaginaSiguiente);
+            Controls.Add(lblPagina);
+            Controls.Add(btnPaginaAnterior);
+            Controls.Add(lblResumen);
+            Controls.Add(btnExportar);
+            Controls.Add(btnAnularVenta);
             Controls.Add(btnSalir);
             Controls.Add(dgvVentas);
             Controls.Add(panelSuperior);
@@ -301,5 +387,12 @@
         private Button btnFiltrarFecha;
         private Button btnBorrarFiltrosFecha;
         private Button btnVerTicket;
+        private ComboBox cbEstado;
+        private Button btnAnularVenta;
+        private Button btnExportar;
+        private Label lblResumen;
+        private Button btnPaginaAnterior;
+        private Label lblPagina;
+        private Button btnPaginaSiguiente;
     }
 }

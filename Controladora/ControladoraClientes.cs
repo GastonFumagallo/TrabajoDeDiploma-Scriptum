@@ -58,6 +58,11 @@ namespace Controladora
         {
             try
             {
+                // La FK Venta -> Cliente es Restrict: se valida antes para dar un mensaje claro y no dejar
+                // la entidad marcada como Deleted en el contexto compartido si el borrado fallara.
+                if (Libreria.Contexto.Ventas.Any(v => v.CLI_ID == clienteSeleccionado.CLI_ID))
+                    return "No se puede eliminar el cliente porque tiene ventas registradas.";
+
                 Libreria.Contexto.Clientes.Remove(clienteSeleccionado);
                 Libreria.Contexto.SaveChanges();
                 return "Cliente eliminado correctamente.";
@@ -86,6 +91,21 @@ namespace Controladora
                 Email = p.CLI_Persona.PER_Mail,
                 Telefono = p.CLI_Persona.PER_Telefono,
             }).ToList();
+        }
+
+        /// <summary>Versión async con contexto propio y sin tracking, para no bloquear la UI.</summary>
+        public async Task<List<ClienteDTO>> ObtenerClientesGridAsync(CancellationToken ct = default)
+        {
+            await using var db = new Libreria();
+            return await db.Clientes.AsNoTracking()
+            .Select(p => new ClienteDTO
+            {
+                CLIDTO_ID = p.CLI_Persona.PER_ID,
+                Nombre = p.CLI_Persona.PER_Nombre,
+                DNI = p.CLI_Persona.PER_DNI,
+                Email = p.CLI_Persona.PER_Mail,
+                Telefono = p.CLI_Persona.PER_Telefono,
+            }).ToListAsync(ct);
         }
 
     }

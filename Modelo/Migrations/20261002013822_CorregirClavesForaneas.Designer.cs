@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modelo.Contexto;
 
@@ -11,9 +12,11 @@ using Modelo.Contexto;
 namespace Modelo.Migrations
 {
     [DbContext(typeof(Libreria))]
-    partial class LibreriaModelSnapshot : ModelSnapshot
+    [Migration("20261002013822_CorregirClavesForaneas")]
+    partial class CorregirClavesForaneas
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -525,25 +528,11 @@ namespace Modelo.Migrations
                     b.Property<int>("MP_ID")
                         .HasColumnType("int");
 
-                    b.Property<bool>("VEN_Anulada")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime>("VEN_Fecha")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("VEN_FechaAnulacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("VEN_MotivoAnulacion")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
                     b.Property<decimal>("VEN_Total")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("VEN_UsuarioAnulacion")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("VEN_ID");
 
@@ -615,7 +604,7 @@ namespace Modelo.Migrations
                     b.HasOne("Modelo.Libro", "DV_Libro")
                         .WithMany()
                         .HasForeignKey("LIB_ID")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Modelo.Venta", "DV_Venta")
@@ -634,7 +623,7 @@ namespace Modelo.Migrations
                     b.HasOne("Modelo.Genero", "LIB_Genero")
                         .WithMany("GEN_Libros")
                         .HasForeignKey("GEN_ID")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("LIB_Genero");
@@ -751,13 +740,13 @@ namespace Modelo.Migrations
                     b.HasOne("Modelo.Cliente", "VEN_Cliente")
                         .WithMany()
                         .HasForeignKey("CLI_ID")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Modelo.MetodoPago", "VEN_MetodoPago")
                         .WithMany()
                         .HasForeignKey("MP_ID")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("VEN_Cliente");

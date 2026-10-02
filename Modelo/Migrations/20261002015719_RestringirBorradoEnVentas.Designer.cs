@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modelo.Contexto;
 
@@ -11,9 +12,11 @@ using Modelo.Contexto;
 namespace Modelo.Migrations
 {
     [DbContext(typeof(Libreria))]
-    partial class LibreriaModelSnapshot : ModelSnapshot
+    [Migration("20261002015719_RestringirBorradoEnVentas")]
+    partial class RestringirBorradoEnVentas
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -525,25 +528,11 @@ namespace Modelo.Migrations
                     b.Property<int>("MP_ID")
                         .HasColumnType("int");
 
-                    b.Property<bool>("VEN_Anulada")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime>("VEN_Fecha")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("VEN_FechaAnulacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("VEN_MotivoAnulacion")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
                     b.Property<decimal>("VEN_Total")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("VEN_UsuarioAnulacion")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("VEN_ID");
 

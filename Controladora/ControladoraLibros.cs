@@ -178,11 +178,36 @@ namespace Controladora
                 Precio = p.LIB_PrecioVenta,
             }).ToList();
         }
+        /// <summary>Versión async con contexto propio y sin tracking, para no bloquear la UI.</summary>
+        public async Task<List<LibroDTO>> ObtenerLibrosGridAsync(CancellationToken ct = default)
+        {
+            await using var db = new Libreria();
+            return await db.Libros.AsNoTracking()
+            .Select(p => new LibroDTO
+            {
+                LIBDTO_ID = p.LIB_ID,
+                Titulo = p.LIB_Titulo,
+                Autor = p.LIB_Autor,
+                Descripcion = p.LIB_Descripcion,
+                Editorial = p.LIB_Editorial,
+                Stock = p.LIB_Stock,
+                AñoPublicacion = p.LIB_AñoPublicacion,
+                Genero = p.LIB_Genero.GEN_Nombre,
+                Precio = p.LIB_PrecioVenta,
+            }).ToListAsync(ct);
+        }
         public string EliminarLibro(Libro libroSeleccionado)
         {
             try
             {
-                var proveedoresLibro = Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroSeleccionado.LIB_ID).ToList();
+                // Las FK DetalleVenta -> Libro y OrdenReposicion -> Libro son Restrict: se valida antes para dar
+                // un mensaje claro y no dejar entidades marcadas como Deleted en el contexto compartido.
+                if (Libreria.Contexto.DetallesVenta.Any(d => d.LIB_ID == libroSeleccionado.LIB_ID))
+                    return "No se puede eliminar el libro porque figura en ventas registradas.";
+                if (Libreria.Contexto.OrdenesReposicion.Any(o => o.OR_LIB_ID == libroSeleccionado.LIB_ID))
+                    return "No se puede eliminar el libro porque tiene órdenes de reposición.";
+
+                var proveedoresLibro =Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroSeleccionado.LIB_ID).ToList();
                 Libreria.Contexto.ProveedoresLibros.RemoveRange(proveedoresLibro);
                 Libreria.Contexto.Libros.Remove(libroSeleccionado);
                 Libreria.Contexto.SaveChanges();
