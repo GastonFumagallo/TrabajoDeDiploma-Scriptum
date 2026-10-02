@@ -39,6 +39,14 @@ namespace Vista
             sb.AppendLine("========================================");
             sb.AppendLine();
 
+            if (ticketActual.Anulada)
+            {
+                sb.AppendLine("  *****  COMPROBANTE ANULADO  *****");
+                sb.AppendLine($"Anulada el {ticketActual.FechaAnulacion:dd/MM/yyyy HH:mm}");
+                sb.AppendLine($"Motivo: {ticketActual.MotivoAnulacion}");
+                sb.AppendLine();
+            }
+
             sb.AppendLine($"Ticket: TK-{ticketActual.NumeroVenta:D6}");
             sb.AppendLine($"Venta N°: {ticketActual.NumeroVenta}");
             sb.AppendLine($"Fecha: {ticketActual.Fecha:dd/MM/yyyy HH:mm}");
@@ -97,6 +105,19 @@ namespace Vista
                 centrado);
 
             y += 50;
+
+            if (ticketActual.Anulada)
+            {
+                e.Graphics.DrawString(
+                    "COMPROBANTE ANULADO",
+                    titulo,
+                    Brushes.Red,
+                    new RectangleF(0, y, e.PageBounds.Width, 30),
+                    centrado);
+                y += 40;
+                e.Graphics.DrawString($"Motivo: {ticketActual.MotivoAnulacion}", texto, Brushes.Black, 50, y);
+                y += 35;
+            }
 
             e.Graphics.DrawString(
                 $"Ticket: TK-{ticketActual.NumeroVenta:D6}",

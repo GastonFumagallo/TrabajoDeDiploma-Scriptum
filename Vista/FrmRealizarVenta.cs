@@ -573,7 +573,7 @@ namespace Vista
                 await CargarCatalogoAsync();  // stock fresco para la próxima venta
 
                 if (verTicket == DialogResult.Yes)
-                    MostrarTicket(resultado.VentaId);
+                    await MostrarTicketAsync(resultado.VentaId);
             }
             catch (OperationCanceledException)
             {
@@ -589,11 +589,11 @@ namespace Vista
             }
         }
 
-        private void MostrarTicket(int ventaId)
+        private async Task MostrarTicketAsync(int ventaId)
         {
             try
             {
-                var ticket = ControladoraVentas.Instancia.GenerarTicket(new Venta { VEN_ID = ventaId });
+                var ticket = await ControladoraVentas.Instancia.GenerarTicketAsync(ventaId, cts.Token);
                 if (ticket == null) return;
                 using var frmTicket = new FrmTickets(ticket);
                 frmTicket.ShowDialog(this);

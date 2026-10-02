@@ -27,7 +27,8 @@ namespace Controladora
         public List<ReporteIngresos> ObtenerIngresos(DateTime fechaDesde, DateTime fechaHasta)
         {
             return Libreria.Contexto.Ventas
-            .Where(v => v.VEN_Fecha >= fechaDesde &&
+            .Where(v => !v.VEN_Anulada &&
+                        v.VEN_Fecha >= fechaDesde &&
                         v.VEN_Fecha <= fechaHasta)
             .GroupBy(v => new
             {
@@ -47,7 +48,8 @@ namespace Controladora
         public List<ReporteLibroMasVendido> ObtenerLibrosMasVendidos(DateTime fechaDesde, DateTime fechaHasta)
         {
             return Libreria.Contexto.DetallesVenta
-                .Where(dv => dv.DV_Venta.VEN_Fecha >= fechaDesde &&
+                .Where(dv => !dv.DV_Venta.VEN_Anulada &&
+                             dv.DV_Venta.VEN_Fecha >= fechaDesde &&
                              dv.DV_Venta.VEN_Fecha <= fechaHasta)
                 .GroupBy(dv => dv.DV_Libro.LIB_Titulo)
                 .Select(g => new Reportes.ReporteLibroMasVendido
@@ -64,7 +66,8 @@ namespace Controladora
         public List<ReporteVentasPorGenero> ObtenerVentasPorGenero(DateTime fechaDesde, DateTime fechaHasta)
         {
             return Libreria.Contexto.DetallesVenta
-                .Where(dv => dv.DV_Venta.VEN_Fecha >= fechaDesde &&
+                .Where(dv => !dv.DV_Venta.VEN_Anulada &&
+                             dv.DV_Venta.VEN_Fecha >= fechaDesde &&
                              dv.DV_Venta.VEN_Fecha <= fechaHasta)
                 .GroupBy(dv => dv.DV_Libro.LIB_Genero.GEN_Nombre)
                 .Select(g => new ReporteVentasPorGenero

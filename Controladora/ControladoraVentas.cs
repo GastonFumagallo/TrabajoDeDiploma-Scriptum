@@ -1,14 +1,17 @@
-﻿using Controladora.MetodoPagoStrategy;
 using Microsoft.EntityFrameworkCore;
 using Modelo;
 using Modelo.Contexto;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Text;
 
 namespace Controladora
 {
+    /// <summary>
+    /// Consultas de ventas. Cada método usa un DbContext propio, de vida corta y sin tracking:
+    /// son lecturas para mostrar en pantalla, no hace falta que EF siga los cambios.
+    /// La escritura (alta y anulación) vive en <see cref="FacadeVentas"/> porque necesita transacción.
+    /// </summary>
     public class ControladoraVentas
     {
         private static ControladoraVentas instancia;
@@ -24,100 +27,98 @@ namespace Controladora
                 return instancia;
             }
         }
-        public TicketVentaDTO GenerarTicket(Venta venta)
+
+        /// <summary>
+        /// Devuelve una página del listado. Filtros, orden, conteo y paginado se resuelven en SQL,
+        /// así el formulario nunca trae a memoria más filas de las que muestra.
+        /// </summary>
+        /// <param name="tamañoPagina">null = sin paginar (para exportar).</param>
+        public async Task<PaginaVentas> BuscarVentasAsync(FiltroVentas filtro, int pagina, int? tamañoPagina, CancellationToken ct = default)
         {
-            Venta ventaCompleta = Libreria.Contexto.Ventas
-                .Include(v => v.VEN_Cliente)
-                    .ThenInclude(c => c.CLI_Persona)
-                .Include(v => v.VEN_MetodoPago)
-                .Include(v => v.VEN_Detalles)
-                    .ThenInclude(d => d.DV_Libro)
-                .FirstOrDefault(v => v.VEN_ID == venta.VEN_ID);
+            await using var db = new Libreria();
+            var query = AplicarFiltro(db.Ventas.AsNoTracking(), filtro);
 
-            if (ventaCompleta == null)
-                return null;
-
-            TicketVentaDTO ticket = new TicketVentaDTO
+            var resultado = new PaginaVentas
             {
-                NumeroVenta = ventaCompleta.VEN_ID,
-                Fecha = ventaCompleta.VEN_Fecha,
-                Cliente = ventaCompleta.VEN_Cliente.CLI_Persona.PER_Nombre,
-                MetodoPago = ventaCompleta.VEN_MetodoPago.MP_Nombre,
-                Total = ventaCompleta.VEN_Total
+                TotalRegistros = await query.CountAsync(ct),
+                TotalFacturado = await query.Where(v => !v.VEN_Anulada).SumAsync(v => (decimal?)v.VEN_Total, ct) ?? 0m,
             };
 
-            foreach (var detalle in ventaCompleta.VEN_Detalles)
-            {
-                ticket.Detalles.Add(new DetalleTicketDTO
+            var ordenada = query.OrderByDescending(v => v.VEN_Fecha).ThenByDescending(v => v.VEN_ID);
+            var paginada = tamañoPagina is int tam
+                ? ordenada.Skip(Math.Max(0, pagina - 1) * tam).Take(tam)
+                : ordenada;
+
+            resultado.Ventas = await paginada
+                .Select(v => new VentaDTO
                 {
-                    Libro = detalle.DV_Libro.LIB_Titulo,
-                    Cantidad = detalle.DV_Cantidad,
-                    PrecioUnitario = detalle.DV_PrecioUnitario,
-                    Subtotal = detalle.DV_Cantidad * detalle.DV_PrecioUnitario
-                });
+                    VENDTO_ID = v.VEN_ID,
+                    Fecha = v.VEN_Fecha,
+                    Cliente = v.VEN_Cliente.CLI_Persona.PER_Nombre,
+                    TotalVenta = v.VEN_Total,
+                    MetodoPago = v.VEN_MetodoPago.MP_Nombre,
+                    Anulada = v.VEN_Anulada,
+                    Estado = v.VEN_Anulada ? "Anulada" : "Vigente",
+                    MotivoAnulacion = v.VEN_MotivoAnulacion,
+                })
+                .ToListAsync(ct);
+
+            return resultado;
+        }
+
+        private static IQueryable<Venta> AplicarFiltro(IQueryable<Venta> query, FiltroVentas filtro)
+        {
+            if (!string.IsNullOrWhiteSpace(filtro.Cliente))
+            {
+                string texto = filtro.Cliente.Trim();
+                // Se traduce a LIKE '%texto%' en SQL Server (la intercalación por defecto ya ignora mayúsculas).
+                query = query.Where(v => v.VEN_Cliente.CLI_Persona.PER_Nombre.Contains(texto)
+                                      || v.VEN_Cliente.CLI_Persona.PER_DNI.ToString().Contains(texto));
             }
 
-            return ticket;
-        }
-        public List<VentaDTO> filtrarVentasPorFecha(DateTime desde, DateTime hasta)
-        {
-            return Libreria.Contexto.Ventas.Where(v => v.VEN_Fecha >= desde && v.VEN_Fecha <= hasta)
-            .Select(v => new VentaDTO
+            if (filtro.Desde is DateTime desde)
+                query = query.Where(v => v.VEN_Fecha >= desde.Date);
+
+            if (filtro.Hasta is DateTime hasta)
             {
-                VENDTO_ID = v.VEN_ID,
-                Fecha = v.VEN_Fecha,
-                TotalVenta = v.VEN_Total,
-                MetodoPago = v.VEN_MetodoPago.MP_Nombre,
-                Cliente = v.VEN_Cliente.CLI_Persona.PER_Nombre,
-            }).ToList();
+                var hastaExclusivo = hasta.Date.AddDays(1);  // incluye todo el día "hasta"
+                query = query.Where(v => v.VEN_Fecha < hastaExclusivo);
+            }
+
+            query = filtro.Estado switch
+            {
+                EstadoVentaFiltro.Vigentes => query.Where(v => !v.VEN_Anulada),
+                EstadoVentaFiltro.Anuladas => query.Where(v => v.VEN_Anulada),
+                _ => query,
+            };
+
+            return query;
         }
 
-        public List<VentaDTO> obtenerVentasGrid()
+        public async Task<TicketVentaDTO?> GenerarTicketAsync(int ventaId, CancellationToken ct = default)
         {
-            return Libreria.Contexto.Ventas.Include(p => p.VEN_MetodoPago).Include(p => p.VEN_Cliente).ThenInclude(c => c.CLI_Persona)
-            .Select(p => new VentaDTO
-            {
-                VENDTO_ID = p.VEN_ID,
-                Fecha = p.VEN_Fecha,
-                TotalVenta = p.VEN_Total,
-                MetodoPago = p.VEN_MetodoPago.MP_Nombre,
-                Cliente = p.VEN_Cliente.CLI_Persona.PER_Nombre,
-            }).ToList();
-        }
-        public Venta buscarVenta(VentaDTO venta)
-        {
-            return Libreria.Contexto.Ventas
-                          .Include(p => p.VEN_MetodoPago).Include(p => p.VEN_Cliente).ThenInclude(c => c.CLI_Persona)
-                          .FirstOrDefault(p => p.VEN_ID == venta.VENDTO_ID);
-        }
-        public Venta CrearVenta(ClienteDTO cliente1, List<LibroVentaDTO> librosVenta, MetodoPago metodoPago, decimal totalParcial)
-        {
-            IMetodoPagoStrategy estrategia = MetodoPagoStrategyFactory.Obtener(metodoPago);
-            decimal totalFinal =estrategia.CalcularTotal(totalParcial);
-            var clienteDb = ControladoraClientes.Instancia.BuscarClienteIndividual(cliente1);
-            if (clienteDb != null)
-            {
-                Venta nuevaVenta = new Venta
+            await using var db = new Libreria();
+            return await db.Ventas.AsNoTracking()
+                .Where(v => v.VEN_ID == ventaId)
+                .Select(v => new TicketVentaDTO
                 {
-                    VEN_Fecha = DateTime.Now,
-                    VEN_Cliente = clienteDb,
-                    VEN_Total = totalFinal,
-                    VEN_MetodoPago = metodoPago,
-                };
-                Libreria.Contexto.Ventas.Add(nuevaVenta);
-                Libreria.Contexto.SaveChanges();
-                return nuevaVenta;
-            }
-            else
-            {
-                return null;
-            }
+                    NumeroVenta = v.VEN_ID,
+                    Fecha = v.VEN_Fecha,
+                    Cliente = v.VEN_Cliente.CLI_Persona.PER_Nombre,
+                    MetodoPago = v.VEN_MetodoPago.MP_Nombre,
+                    Total = v.VEN_Total,
+                    Anulada = v.VEN_Anulada,
+                    FechaAnulacion = v.VEN_FechaAnulacion,
+                    MotivoAnulacion = v.VEN_MotivoAnulacion,
+                    Detalles = v.VEN_Detalles.Select(d => new DetalleTicketDTO
+                    {
+                        Libro = d.DV_Libro.LIB_Titulo,
+                        Cantidad = d.DV_Cantidad,
+                        PrecioUnitario = d.DV_PrecioUnitario,
+                        Subtotal = d.DV_Cantidad * d.DV_PrecioUnitario,
+                    }).ToList(),
+                })
+                .FirstOrDefaultAsync(ct);
         }
-        public List<VentaDTO> buscarVentasPorCliente(string filtro)
-        {
-            return obtenerVentasGrid().Where(p => p.Cliente.ToString().ToLower().Contains(filtro)).ToList();
-        }
-        
-
     }
 }

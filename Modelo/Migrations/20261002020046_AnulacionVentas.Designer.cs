@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modelo.Contexto;
 
@@ -11,9 +12,11 @@ using Modelo.Contexto;
 namespace Modelo.Migrations
 {
     [DbContext(typeof(Libreria))]
-    partial class LibreriaModelSnapshot : ModelSnapshot
+    [Migration("20261002020046_AnulacionVentas")]
+    partial class AnulacionVentas
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

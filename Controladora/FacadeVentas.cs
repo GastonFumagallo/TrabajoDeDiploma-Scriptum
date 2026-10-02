@@ -128,5 +128,56 @@ namespace Modelo
 
             return ResultadoVenta.Ok(venta.VEN_ID, subtotal, total);
         }
+
+        /// <summary>
+        /// Anula una venta (baja lógica) y devuelve al stock las unidades vendidas, todo en una transacción.
+        /// La venta no se borra: queda en el historial con fecha, motivo y usuario de la anulación.
+        /// </summary>
+        public async Task<ResultadoVenta> AnularVentaAsync(int ventaId, string motivo, string usuario, CancellationToken ct = default)
+        {
+            motivo = motivo?.Trim() ?? string.Empty;
+            if (motivo.Length < 5)
+                return ResultadoVenta.Error("Indique un motivo de anulación (al menos 5 caracteres).");
+            if (motivo.Length > 250)
+                motivo = motivo[..250];
+
+            await using var db = new Libreria();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            // UPDATE condicional: si dos usuarios anulan la misma venta a la vez, sólo uno afecta la fila,
+            // y por lo tanto el stock se repone una única vez.
+            var ahora = DateTime.Now;
+            int filas = await db.Ventas
+                .Where(v => v.VEN_ID == ventaId && !v.VEN_Anulada)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(v => v.VEN_Anulada, true)
+                    .SetProperty(v => v.VEN_FechaAnulacion, ahora)
+                    .SetProperty(v => v.VEN_MotivoAnulacion, motivo)
+                    .SetProperty(v => v.VEN_UsuarioAnulacion, usuario), ct);
+
+            if (filas == 0)
+            {
+                bool existe = await db.Ventas.AnyAsync(v => v.VEN_ID == ventaId, ct);
+                return ResultadoVenta.Error(existe ? "La venta ya estaba anulada." : "La venta no existe.");
+            }
+
+            var detalles = await db.DetallesVenta.AsNoTracking()
+                .Where(d => d.VEN_ID == ventaId)
+                .GroupBy(d => d.LIB_ID)
+                .Select(g => new { LibroId = g.Key, Cantidad = g.Sum(d => d.DV_Cantidad) })
+                .ToListAsync(ct);
+
+            foreach (var d in detalles)
+            {
+                await db.Libros
+                    .Where(l => l.LIB_ID == d.LibroId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Stock, l => l.LIB_Stock + d.Cantidad), ct);
+            }
+
+            decimal total = await db.Ventas.Where(v => v.VEN_ID == ventaId).Select(v => v.VEN_Total).FirstAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return ResultadoVenta.Ok(ventaId, total, total);
+        }
     }
 }

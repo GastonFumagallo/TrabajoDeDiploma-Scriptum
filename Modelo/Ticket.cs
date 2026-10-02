@@ -13,6 +13,9 @@ namespace Modelo
         public string MetodoPago { get; set; }
 
         public decimal Total { get; set; }
+        public bool Anulada { get; set; }
+        public DateTime? FechaAnulacion { get; set; }
+        public string? MotivoAnulacion { get; set; }
 
         public List<DetalleTicketDTO> Detalles { get; set; } = new();
     }
