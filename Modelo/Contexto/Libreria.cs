@@ -62,6 +62,33 @@ namespace Modelo.Contexto
                 .WithMany(l => l.LIB_Proveedores)
                 .HasForeignKey(pl => pl.LIB_ID);
 
+            // Las propiedades CLI_ID, MP_ID, VEN_ID, LIB_ID y GEN_ID no siguen la convención de nombres de EF
+            // (<Navegación><PK>), así que hay que declararlas como FK explícitamente; si no, EF crea columnas sombra.
+            modelBuilder.Entity<Venta>()
+                .HasOne(v => v.VEN_Cliente)
+                .WithMany()
+                .HasForeignKey(v => v.CLI_ID);
+
+            modelBuilder.Entity<Venta>()
+                .HasOne(v => v.VEN_MetodoPago)
+                .WithMany()
+                .HasForeignKey(v => v.MP_ID);
+
+            modelBuilder.Entity<DetalleVenta>()
+                .HasOne(d => d.DV_Venta)
+                .WithMany(v => v.VEN_Detalles)
+                .HasForeignKey(d => d.VEN_ID);
+
+            modelBuilder.Entity<DetalleVenta>()
+                .HasOne(d => d.DV_Libro)
+                .WithMany()
+                .HasForeignKey(d => d.LIB_ID);
+
+            modelBuilder.Entity<Libro>()
+                .HasOne(l => l.LIB_Genero)
+                .WithMany(g => g.GEN_Libros)
+                .HasForeignKey(l => l.GEN_ID);
+
             modelBuilder.Entity<OrdenReposicion>()
                 .HasOne(o => o.OR_Libro)
                 .WithMany()
