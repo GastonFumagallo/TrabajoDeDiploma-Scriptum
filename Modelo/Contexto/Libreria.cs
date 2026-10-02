@@ -64,30 +64,37 @@ namespace Modelo.Contexto
 
             // Las propiedades CLI_ID, MP_ID, VEN_ID, LIB_ID y GEN_ID no siguen la convención de nombres de EF
             // (<Navegación><PK>), así que hay que declararlas como FK explícitamente; si no, EF crea columnas sombra.
+            // Borrado: Restrict en todo lo que apunta a datos maestros, para que eliminar un cliente, libro,
+            // método de pago o género nunca arrastre ventas del historial. Sólo los detalles cascadean con su venta.
             modelBuilder.Entity<Venta>()
                 .HasOne(v => v.VEN_Cliente)
                 .WithMany()
-                .HasForeignKey(v => v.CLI_ID);
+                .HasForeignKey(v => v.CLI_ID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Venta>()
                 .HasOne(v => v.VEN_MetodoPago)
                 .WithMany()
-                .HasForeignKey(v => v.MP_ID);
+                .HasForeignKey(v => v.MP_ID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<DetalleVenta>()
                 .HasOne(d => d.DV_Venta)
                 .WithMany(v => v.VEN_Detalles)
-                .HasForeignKey(d => d.VEN_ID);
+                .HasForeignKey(d => d.VEN_ID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<DetalleVenta>()
                 .HasOne(d => d.DV_Libro)
                 .WithMany()
-                .HasForeignKey(d => d.LIB_ID);
+                .HasForeignKey(d => d.LIB_ID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Libro>()
                 .HasOne(l => l.LIB_Genero)
                 .WithMany(g => g.GEN_Libros)
-                .HasForeignKey(l => l.GEN_ID);
+                .HasForeignKey(l => l.GEN_ID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<OrdenReposicion>()
                 .HasOne(o => o.OR_Libro)

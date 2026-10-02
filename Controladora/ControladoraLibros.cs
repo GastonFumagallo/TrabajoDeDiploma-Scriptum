@@ -200,7 +200,14 @@ namespace Controladora
         {
             try
             {
-                var proveedoresLibro = Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroSeleccionado.LIB_ID).ToList();
+                // Las FK DetalleVenta -> Libro y OrdenReposicion -> Libro son Restrict: se valida antes para dar
+                // un mensaje claro y no dejar entidades marcadas como Deleted en el contexto compartido.
+                if (Libreria.Contexto.DetallesVenta.Any(d => d.LIB_ID == libroSeleccionado.LIB_ID))
+                    return "No se puede eliminar el libro porque figura en ventas registradas.";
+                if (Libreria.Contexto.OrdenesReposicion.Any(o => o.OR_LIB_ID == libroSeleccionado.LIB_ID))
+                    return "No se puede eliminar el libro porque tiene órdenes de reposición.";
+
+                var proveedoresLibro =Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroSeleccionado.LIB_ID).ToList();
                 Libreria.Contexto.ProveedoresLibros.RemoveRange(proveedoresLibro);
                 Libreria.Contexto.Libros.Remove(libroSeleccionado);
                 Libreria.Contexto.SaveChanges();
