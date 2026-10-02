@@ -25,6 +25,18 @@ namespace Modelo
         [Column(TypeName = "decimal(18,2)")]
         public decimal LIB_PrecioVenta { get; set; }
 
+        /// <summary>ISBN / código de barras. Opcional; permite la carga con lector en el punto de venta.</summary>
+        [StringLength(20)]
+        public string? LIB_ISBN { get; set; }
+
+        /// <summary>Deja sólo dígitos y la X final (ISBN-10); vacío → null. Así "978-950-..." y "978950..." coinciden.</summary>
+        public static string? NormalizarISBN(string? texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto)) return null;
+            var limpio = new string(texto.Where(c => char.IsDigit(c) || c is 'X' or 'x').ToArray()).ToUpperInvariant();
+            return limpio.Length == 0 ? null : limpio;
+        }
+
         public ICollection<ProveedorLibro> LIB_Proveedores { get; set; } = new List<ProveedorLibro>();
     }
 
@@ -55,6 +67,7 @@ namespace Modelo
         public int Stock { get; set; }
         public int AñoPublicacion { get; set; }
         public string Genero { get; set; }
+        public string? ISBN { get; set; }
     }
 
 

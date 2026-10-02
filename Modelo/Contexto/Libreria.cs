@@ -46,9 +46,27 @@ namespace Modelo.Contexto
         public virtual DbSet<MetodoPago> MetodosPago { get; set; }
         public virtual DbSet<ProveedorLibro> ProveedoresLibros {  get; set; }
         public virtual DbSet<OrdenReposicion> OrdenesReposicion { get; set; }
+        public virtual DbSet<PagoVenta> PagosVenta { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Búsqueda por código de barras en el punto de venta.
+            modelBuilder.Entity<Libro>()
+                .HasIndex(l => l.LIB_ISBN);
+
+            // Los pagos pertenecen a la venta (cascada); el medio de pago es un maestro (Restrict).
+            modelBuilder.Entity<PagoVenta>()
+                .HasOne(p => p.PAG_Venta)
+                .WithMany(v => v.VEN_Pagos)
+                .HasForeignKey(p => p.VEN_ID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PagoVenta>()
+                .HasOne(p => p.PAG_MetodoPago)
+                .WithMany()
+                .HasForeignKey(p => p.MP_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<ProveedorLibro>()
             .HasKey(pl => new { pl.PROV_ID, pl.LIB_ID });
 

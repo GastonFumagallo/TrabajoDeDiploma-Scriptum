@@ -64,15 +64,6 @@ namespace Controladora
                 .Include(p => p.LIB_Genero)
                 .FirstOrDefault(p => p.LIB_ID == libroID);
         }
-        public void ModificarStock(List<LibroVentaDTO> librosVenta)
-        {
-            foreach (var p in librosVenta)
-            {
-                var productoDb = Libreria.Contexto.Libros.FirstOrDefault(x => x.LIB_ID == p.LVDTO_ID);
-                productoDb.LIB_Stock -= p.Cantidad;
-            }
-            Libreria.Contexto.SaveChanges();
-        }
         public string ModificarStock(LibroDTO producto, int unidades)
         {
             try
@@ -146,6 +137,7 @@ namespace Controladora
                     libroExistente.LIB_Genero = libroModificado.LIB_Genero;
                     libroExistente.LIB_Stock = libroModificado.LIB_Stock;
                     libroExistente.LIB_PrecioVenta = libroModificado.LIB_PrecioVenta;
+                    libroExistente.LIB_ISBN = libroModificado.LIB_ISBN;
                     var proveedoresViejos = Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroExistente.LIB_ID).ToList();
                     Libreria.Contexto.ProveedoresLibros.RemoveRange(proveedoresViejos);
                     foreach (var item in proveedoresLibros)
@@ -176,6 +168,7 @@ namespace Controladora
                 AñoPublicacion = p.LIB_AñoPublicacion,
                 Genero = p.LIB_Genero.GEN_Nombre,
                 Precio = p.LIB_PrecioVenta,
+                ISBN = p.LIB_ISBN,
             }).ToList();
         }
         /// <summary>Versión async con contexto propio y sin tracking, para no bloquear la UI.</summary>
@@ -194,6 +187,7 @@ namespace Controladora
                 AñoPublicacion = p.LIB_AñoPublicacion,
                 Genero = p.LIB_Genero.GEN_Nombre,
                 Precio = p.LIB_PrecioVenta,
+                ISBN = p.LIB_ISBN,
             }).ToListAsync(ct);
         }
         public string EliminarLibro(Libro libroSeleccionado)

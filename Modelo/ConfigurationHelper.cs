@@ -22,5 +22,15 @@ namespace Modelo
         {
             return _configuration.GetConnectionString(name);
         }
+
+        /// <summary>Lee un decimal de appsettings.json (ej. "Ventas:TasaIVA"). Si falta o es inválido, devuelve el valor por defecto.</summary>
+        public static decimal GetDecimal(string clave, decimal porDefecto)
+        {
+            var valor = _configuration[clave];
+            return decimal.TryParse(valor, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var resultado)
+                ? resultado
+                : porDefecto;
+        }
     }
 }

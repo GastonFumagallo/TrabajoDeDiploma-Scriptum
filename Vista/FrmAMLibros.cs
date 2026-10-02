@@ -33,6 +33,8 @@ namespace Vista
                 txtAutor.Text = libroSeleccionado.Autor;
                 txtAñoPublicacion.Text = libroSeleccionado.AñoPublicacion.ToString();
                 numStock.Value = libroSeleccionado.Stock;
+                numPrecio.Value = Math.Min(numPrecio.Maximum, libroSeleccionado.Precio);  // antes no se cargaba y al guardar se pisaba el precio
+                txtISBN.Text = libroSeleccionado.ISBN;
                 cbGeneros.SelectedValue = ControladoraGeneros.Instancia.obtenerIDporNombre(libroSeleccionado.Genero);
             }
         }
@@ -57,6 +59,7 @@ namespace Vista
                 Genero generoLibro = ControladoraGeneros.Instancia.ObtenerGeneroPorId((int)cbGeneros.SelectedValue);
                 nuevoLibro.LIB_Genero = generoLibro;
                 nuevoLibro.LIB_Stock = (int)numStock.Value;
+                nuevoLibro.LIB_ISBN = Libro.NormalizarISBN(txtISBN.Text);
                 List<ProveedorLibroDTO> proveedoresLibros = new List<ProveedorLibroDTO>();
                 FrmSeleccionarProveedores seleccionarProveedores = new FrmSeleccionarProveedores();
 
@@ -80,6 +83,7 @@ namespace Vista
                 libroM.LIB_Genero = generoLibro;
                 libroM.LIB_Stock = (int)numStock.Value;
                 libroM.LIB_PrecioVenta = numPrecio.Value;
+                libroM.LIB_ISBN = Libro.NormalizarISBN(txtISBN.Text);
                 FrmSeleccionarProveedores seleccionarProveedores = new FrmSeleccionarProveedores();
                 List<ProveedorLibroDTO> proveedoresLibros = new List<ProveedorLibroDTO>();
                 seleccionarProveedores.cargarProveedoresLibrosExistentes(libroM);

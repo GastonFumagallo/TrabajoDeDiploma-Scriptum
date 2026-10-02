@@ -12,7 +12,14 @@ namespace Modelo
         public string Cliente { get; set; }
         public string MetodoPago { get; set; }
 
+        public decimal Subtotal { get; set; }
+        public decimal Descuento { get; set; }
+        public decimal AjusteMedioPago { get; set; }
+        public decimal IVA { get; set; }
         public decimal Total { get; set; }
+        public decimal Recibido { get; set; }
+        public decimal Vuelto { get; set; }
+        public string? Usuario { get; set; }
         public bool Anulada { get; set; }
         public DateTime? FechaAnulacion { get; set; }
         public string? MotivoAnulacion { get; set; }

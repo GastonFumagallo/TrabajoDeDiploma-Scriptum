@@ -53,6 +53,8 @@
             txtAñoPublicacion = new TextBox();
             numPrecio = new NumericUpDown();
             label6 = new Label();
+            lblISBN = new Label();
+            txtISBN = new TextBox();
             panelSuperior.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbLogo).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numStock).BeginInit();
@@ -264,12 +266,31 @@
             label6.TabIndex = 51;
             label6.Text = "Precio";
             // 
+            // lblISBN
+            // 
+            lblISBN.AutoSize = true;
+            lblISBN.Location = new Point(7, 509);
+            lblISBN.Name = "lblISBN";
+            lblISBN.Size = new Size(152, 20);
+            lblISBN.TabIndex = 52;
+            lblISBN.Text = "ISBN / Cód. barras";
+            // 
+            // txtISBN
+            // 
+            txtISBN.Location = new Point(176, 506);
+            txtISBN.MaxLength = 20;
+            txtISBN.Name = "txtISBN";
+            txtISBN.Size = new Size(250, 27);
+            txtISBN.TabIndex = 53;
+            // 
             // FrmAMLibros
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.Control;
             ClientSize = new Size(656, 552);
+            Controls.Add(txtISBN);
+            Controls.Add(lblISBN);
             Controls.Add(label6);
             Controls.Add(numPrecio);
             Controls.Add(txtAñoPublicacion);
@@ -326,5 +347,7 @@
         private TextBox txtAñoPublicacion;
         private NumericUpDown numPrecio;
         private Label label6;
+        private Label lblISBN;
+        private TextBox txtISBN;
     }
 }

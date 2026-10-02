@@ -1,5 +1,7 @@
 using Controladora;
+using Controladora.MetodoPagoStrategy;
 using Modelo;
+using Servicios;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,385 +14,431 @@ using System.Windows.Forms;
 namespace Vista
 {
     /// <summary>
-    /// Punto de venta: 1) elegir cliente, 2) armar el carrito, 3) cobrar.
-    /// El cobro se delega a <see cref="FrmConcretarVenta"/> (diálogo modal que sólo elige el método de pago)
-    /// y la persistencia a <see cref="FacadeVentas.RealizarVentaAsync"/> (una única transacción).
+    /// Punto de venta en una sola pantalla: encabezado (fecha, comprobante, usuario, cliente),
+    /// carga rápida de libros (lector de código de barras o búsqueda por texto), carrito y panel de cierre
+    /// (descuento, recargo del medio de pago, IVA, total, monto recibido y vuelto).
     ///
-    /// Atajos: F2 buscar libro · Enter en la grilla de libros → cantidad · Enter en cantidad → agregar ·
-    /// Doble clic agrega 1 · Supr quita la línea del carrito · F12 cobrar.
+    /// La pantalla sólo arma la <see cref="SolicitudVenta"/> y muestra la vista previa de importes con
+    /// <see cref="CalculadoraVenta"/>; el registro definitivo (precios, stock, transacción) lo hace
+    /// <see cref="FacadeVentas.RegistrarVentaAsync"/>.
     /// </summary>
     public partial class FrmRealizarVenta : Form
     {
-        /// <summary>Línea del carrito. Subtotal calculado para que la grilla lo muestre sin lógica extra.</summary>
+        #region Tipos auxiliares
+
+        /// <summary>Línea del carrito enlazada a la grilla.</summary>
         public sealed class LineaCarrito
         {
             public int LibroId { get; init; }
-            public string Titulo { get; init; } = string.Empty;
-            public string Autor { get; init; } = string.Empty;
-            public string Editorial { get; init; } = string.Empty;
-            public decimal Precio { get; init; }
+            public string Producto { get; init; } = string.Empty;
+            public decimal PrecioUnitario { get; init; }
             public int Cantidad { get; set; }
-            public decimal Subtotal => Precio * Cantidad;
+            public decimal Subtotal => PrecioUnitario * Cantidad;
 
-            /// <summary>Stock en base al momento de cargar el catálogo. Validación de UI; la definitiva la hace el back-end.</summary>
+            /// <summary>Stock al momento de cargar el catálogo. Validación de UI; la definitiva la hace el servicio.</summary>
             public int StockMaximo { get; set; }
-
-            public LibroVentaDTO ToDto() => new LibroVentaDTO
-            {
-                LVDTO_ID = LibroId,
-                Titulo = Titulo,
-                Autor = Autor,
-                Editorial = Editorial,
-                Precio = Precio,
-                Cantidad = Cantidad,
-            };
         }
 
-        private const string ColCantidad = nameof(LineaCarrito.Cantidad);
+        /// <summary>Ítem del combo de clientes: texto buscable "Nombre — DNI".</summary>
+        private sealed record ClienteItem(ClienteDTO Cliente, bool EsConsumidorFinal)
+        {
+            public override string ToString() =>
+                EsConsumidorFinal ? Cliente.Nombre : $"{Cliente.Nombre} — DNI {Cliente.DNI}";
+        }
 
-        // Catálogo en memoria: se carga una vez (async) y se filtra localmente,
-        // en vez de ir a la base en cada tecla como antes.
+        /// <summary>Ítem de la lista de sugerencias de búsqueda.</summary>
+        private sealed record SugerenciaLibro(LibroDTO Libro, int Disponible)
+        {
+            public override string ToString() =>
+                $"{Libro.Titulo} — {Libro.Autor}    ${Libro.Precio:N2}    (stock {Disponible})";
+        }
+
+        #endregion
+
+        private const int MaxSugerencias = 30;
+
         private List<LibroDTO> catalogo = new();
-        private List<ClienteDTO> clientes = new();
-
-        private readonly BindingSource bsLibros = new();
-        private readonly BindingSource bsClientes = new();
+        private Dictionary<string, LibroDTO> catalogoPorIsbn = new();
         private readonly BindingList<LineaCarrito> carrito = new();
+        private LibroDTO? libroSeleccionado;
 
-        private ClienteDTO? clienteActual;
+        private ClienteItem? clienteActual;
+        private ClienteItem? consumidorFinal;
+
+        private CalculoVenta calculo = CalculadoraVenta.Calcular(0, 0, null, null, 0);
+        private bool montoRecibidoEditado;   // si el cajero tipeó el monto, no se lo pisa al recalcular
+        private bool actualizandoMonto;
         private bool procesando;
-        private string textoBotonCobrar = string.Empty;
+        private int? ultimaVentaId;
 
-        // Debounce del filtro: espera a que el usuario deje de tipear antes de filtrar.
-        private readonly System.Windows.Forms.Timer timerFiltroLibros = new() { Interval = 250 };
+        private readonly System.Windows.Forms.Timer timerBusqueda = new() { Interval = 150 };
+        private readonly System.Windows.Forms.Timer timerReloj = new() { Interval = 30_000 };
         private readonly CancellationTokenSource cts = new();
 
         public FrmRealizarVenta()
         {
             InitializeComponent();
 
-            KeyPreview = true;
-            KeyDown += FrmRealizarVenta_KeyDown;
+            ConfigurarCarrito();
+            ConfigurarBusqueda();
+            ConfigurarCliente();
+            ConfigurarCierre();
+
+            btnVolver.Click += (_, _) => Volver();
             FormClosing += FrmRealizarVenta_FormClosing;
-            Disposed += (_, _) => { timerFiltroLibros.Dispose(); cts.Dispose(); };
+            Disposed += (_, _) => { timerBusqueda.Dispose(); timerReloj.Dispose(); cts.Dispose(); };
 
-            ConfigurarGrillaLibros();
-            ConfigurarGrillaCarrito();
-            ConfigurarGrillaClientes();
-
-            numCantidad.Minimum = 1;
-            numCantidad.Value = 1;
-            numCantidad.KeyDown += numCantidad_KeyDown;
-
-            txtFiltrarLibro.KeyDown += txtFiltrarLibro_KeyDown;
-            timerFiltroLibros.Tick += (_, _) => { timerFiltroLibros.Stop(); AplicarFiltroLibros(); };
-
-            // Estos controles existían en el diseñador pero no tenían eventos conectados.
-            txtFiltrarCliente.TextChanged += (_, _) => AplicarFiltroClientes();
-            btnFiltrarCliente.Click += (_, _) => AplicarFiltroClientes();
-            btnBorrarFiltrosCliente.Click += (_, _) => { txtFiltrarCliente.Text = string.Empty; };
-            dgvClientes.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) btnSeleccionarCliente_Click(this, EventArgs.Empty); };
+            timerReloj.Tick += (_, _) => ActualizarEncabezado();
         }
 
-        #region Configuración de grillas
-
-        private static void HabilitarDoubleBuffer(DataGridView dgv) =>
-            typeof(DataGridView)
-                .GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)?
-                .SetValue(dgv, true);
-
-        private void ConfigurarGrillaLibros()
-        {
-            HabilitarDoubleBuffer(dgvLibros);
-            dgvLibros.AutoGenerateColumns = true;
-            dgvLibros.AllowUserToAddRows = false;
-            dgvLibros.AllowUserToDeleteRows = false;
-            dgvLibros.MultiSelect = false;
-            dgvLibros.RowHeadersVisible = false;
-            dgvLibros.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvLibros.DataSource = bsLibros;
-
-            dgvLibros.DataBindingComplete += (_, _) =>
-            {
-                foreach (var col in new[] { "LIBDTO_ID", "Descripcion", "AñoPublicacion", "Genero" })
-                    if (dgvLibros.Columns.Contains(col)) dgvLibros.Columns[col].Visible = false;
-                if (dgvLibros.Columns.Contains("Precio"))
-                    dgvLibros.Columns["Precio"].DefaultCellStyle.Format = "N2";
-            };
-            dgvLibros.SelectionChanged += (_, _) => MostrarLibroSeleccionado();
-            dgvLibros.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) AgregarLibroSeleccionado(1); };
-            dgvLibros.KeyDown += dgvLibros_KeyDown;
-            dgvLibros.CellFormatting += dgvLibros_CellFormatting;
-        }
-
-        private void ConfigurarGrillaCarrito()
-        {
-            HabilitarDoubleBuffer(dgvVentas);
-            dgvVentas.AutoGenerateColumns = true;
-            dgvVentas.AllowUserToAddRows = false;
-            dgvVentas.AllowUserToDeleteRows = false;
-            dgvVentas.MultiSelect = false;
-            dgvVentas.RowHeadersVisible = false;
-            dgvVentas.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvVentas.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
-            dgvVentas.ReadOnly = false;
-            dgvVentas.DataSource = carrito;
-
-            // Las columnas se generan recién al enlazar (puede ser después del constructor),
-            // por eso se configuran acá y no inline.
-            dgvVentas.DataBindingComplete += (_, _) =>
-            {
-                foreach (DataGridViewColumn col in dgvVentas.Columns)
-                    col.ReadOnly = col.Name != ColCantidad;  // sólo la cantidad es editable
-
-                foreach (var oculta in new[] { nameof(LineaCarrito.LibroId), nameof(LineaCarrito.StockMaximo) })
-                    if (dgvVentas.Columns.Contains(oculta)) dgvVentas.Columns[oculta].Visible = false;
-                foreach (var moneda in new[] { nameof(LineaCarrito.Precio), nameof(LineaCarrito.Subtotal) })
-                    if (dgvVentas.Columns.Contains(moneda)) dgvVentas.Columns[moneda].DefaultCellStyle.Format = "N2";
-            };
-
-            dgvVentas.CellValidating += dgvVentas_CellValidating;
-            dgvVentas.CellEndEdit += (_, e) =>
-            {
-                dgvVentas.Rows[e.RowIndex].ErrorText = string.Empty;
-                carrito.ResetItem(e.RowIndex);  // refresca el Subtotal de la fila
-                ActualizarTotales();
-            };
-            dgvVentas.DataError += (_, e) => e.Cancel = true;
-            dgvVentas.KeyDown += dgvVentas_KeyDown;
-        }
-
-        private void ConfigurarGrillaClientes()
-        {
-            HabilitarDoubleBuffer(dgvClientes);
-            dgvClientes.AllowUserToAddRows = false;
-            dgvClientes.ReadOnly = true;
-            dgvClientes.MultiSelect = false;
-            dgvClientes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvClientes.DataSource = bsClientes;
-            dgvClientes.DataBindingComplete += (_, _) =>
-            {
-                if (dgvClientes.Columns.Contains("CLIDTO_ID")) dgvClientes.Columns["CLIDTO_ID"].Visible = false;
-            };
-        }
-
-        #endregion
-
-        #region Carga de datos (async)
+        #region Carga inicial
 
         private async void FrmRealizarVenta_Load(object sender, EventArgs e)
         {
-            sinLibrosVenta();
-            modoInicio();
+            ActualizarEncabezado();
+            timerReloj.Start();
+            Recalcular();
 
             try
             {
                 UseWaitCursor = true;
-                await Task.WhenAll(CargarCatalogoAsync(), CargarClientesAsync());
+                panelCarga.Enabled = panelCierre.Enabled = panelEncabezado.Enabled = false;
+                await Task.WhenAll(CargarCatalogoAsync(), CargarClientesAsync(), CargarMetodosPagoAsync());
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                MostrarError("No se pudieron cargar los datos iniciales.", ex);
+                MostrarError("No se pudieron cargar los datos del punto de venta.", ex);
             }
             finally
             {
                 UseWaitCursor = false;
+                panelCarga.Enabled = panelCierre.Enabled = panelEncabezado.Enabled = true;
             }
+
+            txtBuscar.Focus();
         }
 
         private async Task CargarCatalogoAsync()
         {
             catalogo = await ControladoraLibros.Instancia.ObtenerLibrosGridAsync(cts.Token);
-            SincronizarStockCarrito();
-            AplicarFiltroLibros();
+            catalogoPorIsbn = catalogo
+                .Select(l => (Libro: l, Isbn: Libro.NormalizarISBN(l.ISBN)))
+                .Where(x => x.Isbn != null)
+                .GroupBy(x => x.Isbn!)
+                .ToDictionary(g => g.Key, g => g.First().Libro);
+
+            // Refresca el tope de stock de lo que ya está en el carrito.
+            var stockPorId = catalogo.ToDictionary(l => l.LIBDTO_ID, l => l.Stock);
+            foreach (var linea in carrito)
+                linea.StockMaximo = stockPorId.TryGetValue(linea.LibroId, out int stock) ? stock : 0;
+
+            if (libroSeleccionado != null)
+                SeleccionarLibro(catalogo.FirstOrDefault(l => l.LIBDTO_ID == libroSeleccionado.LIBDTO_ID), moverFoco: false);
         }
 
-        private async Task CargarClientesAsync()
+        private async Task CargarClientesAsync(int? seleccionarPersonaId = null)
         {
-            clientes = await ControladoraClientes.Instancia.ObtenerClientesGridAsync(cts.Token);
-            AplicarFiltroClientes();
+            var clientes = await ControladoraClientes.Instancia.ObtenerClientesGridAsync(cts.Token);
+            var cf = await ControladoraClientes.Instancia.ObtenerConsumidorFinalAsync(cts.Token);
+
+            consumidorFinal = new ClienteItem(cf, EsConsumidorFinal: true);
+            var items = new List<ClienteItem> { consumidorFinal };
+            items.AddRange(clientes
+                .Where(c => c.CLIDTO_ID != cf.CLIDTO_ID)
+                .OrderBy(c => c.Nombre)
+                .Select(c => new ClienteItem(c, EsConsumidorFinal: false)));
+
+            cbCliente.DataSource = items;
+            var aSeleccionar = items.FirstOrDefault(i => i.Cliente.CLIDTO_ID == (seleccionarPersonaId ?? clienteActual?.Cliente.CLIDTO_ID))
+                               ?? consumidorFinal;
+            EstablecerCliente(aSeleccionar);
+        }
+
+        private async Task CargarMetodosPagoAsync()
+        {
+            var metodos = await ControladoraMetodosPago.Instancia.ObtenerMetodosPagoAsync(soloActivos: true, cts.Token);
+            int? anterior = (cbMetodoPago.SelectedItem as MetodoPago)?.MP_ID;
+
+            cbMetodoPago.DataSource = metodos;
+            cbMetodoPago.DisplayMember = nameof(MetodoPago.MP_Nombre);
+            cbMetodoPago.ValueMember = nameof(MetodoPago.MP_ID);
+
+            // Por defecto: el que estaba elegido, si no Efectivo, si no el primero.
+            var porDefecto = metodos.FirstOrDefault(m => m.MP_ID == anterior)
+                             ?? metodos.FirstOrDefault(MetodoPagoStrategyFactory.EsEfectivo)
+                             ?? metodos.FirstOrDefault();
+            cbMetodoPago.SelectedItem = porDefecto;
+            Recalcular();
+        }
+
+        private void ActualizarEncabezado()
+        {
+            lblFecha.Text = $"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}";
+            lblUsuario.Text = $"Usuario: {UsuarioActual}";
+            lblComprobante.Text = ultimaVentaId is int id
+                ? $"Comprobante: nuevo · última {Venta.FormatearComprobante(id)}"
+                : "Comprobante: nuevo (se numera al registrar)";
+        }
+
+        private static string UsuarioActual => PermisoService.Instancia.UsuarioActual?.USU_Nombre ?? "—";
+
+        #endregion
+
+        #region Cliente
+
+        private void ConfigurarCliente()
+        {
+            cbCliente.DropDownStyle = ComboBoxStyle.DropDown;
+            cbCliente.SelectionChangeCommitted += (_, _) =>
+            {
+                if (cbCliente.SelectedItem is ClienteItem item) EstablecerCliente(item);
+            };
+            // Si el texto tipeado no corresponde a ningún cliente, se vuelve al último válido.
+            cbCliente.Validating += (_, _) =>
+            {
+                var item = cbCliente.SelectedItem as ClienteItem
+                           ?? (cbCliente.DataSource as List<ClienteItem>)?
+                               .FirstOrDefault(i => string.Equals(i.ToString(), cbCliente.Text.Trim(), StringComparison.OrdinalIgnoreCase));
+                EstablecerCliente(item ?? clienteActual ?? consumidorFinal);
+            };
+            cbCliente.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    e.SuppressKeyPress = true;
+                    txtBuscar.Focus();   // dispara Validating y vuelve a la carga de productos
+                }
+            };
+
+            btnConsumidorFinal.Click += (_, _) => EstablecerCliente(consumidorFinal);
+            btnNuevoCliente.Click += async (_, _) => await AltaRapidaClienteAsync();
+            toolTip.SetToolTip(btnNuevoCliente, "Dar de alta un cliente nuevo");
+        }
+
+        private void EstablecerCliente(ClienteItem? item)
+        {
+            if (item == null) return;
+            clienteActual = item;
+            if (!Equals(cbCliente.SelectedItem, item))
+                cbCliente.SelectedItem = item;
+        }
+
+        private async Task AltaRapidaClienteAsync()
+        {
+            var antes = (cbCliente.DataSource as List<ClienteItem>)?.Select(i => i.Cliente.CLIDTO_ID).ToHashSet() ?? new();
+            using (var frm = new FrmAgregarCliente())
+                frm.ShowDialog(this);
+
+            try
+            {
+                // Se recarga la lista y, si se dio de alta alguien, queda seleccionado.
+                var clientes = await ControladoraClientes.Instancia.ObtenerClientesGridAsync(cts.Token);
+                var nuevo = clientes.Where(c => !antes.Contains(c.CLIDTO_ID)).OrderByDescending(c => c.CLIDTO_ID).FirstOrDefault();
+                await CargarClientesAsync(nuevo?.CLIDTO_ID);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                MostrarError("No se pudo actualizar la lista de clientes.", ex);
+            }
         }
 
         #endregion
 
-        #region Paso 1: cliente
+        #region Búsqueda y carga de productos
 
-        void modoInicio()
+        private void ConfigurarBusqueda()
         {
-            gbSeleccionarLibros.Enabled = false;
-            btnSelectOtroCliente.Visible = false;
-            lblClienteSeleccionado.Visible = false;
-            lblNombreCliente.Visible = false;
-        }
+            timerBusqueda.Tick += (_, _) => { timerBusqueda.Stop(); MostrarSugerencias(); };
+            txtBuscar.TextChanged += (_, _) => { timerBusqueda.Stop(); timerBusqueda.Start(); };
+            txtBuscar.KeyDown += txtBuscar_KeyDown;
+            txtBuscar.Leave += (_, _) => BeginInvoke(() => { if (!lstSugerencias.Focused) OcultarSugerencias(); });
 
-        private void AplicarFiltroClientes()
-        {
-            string filtro = txtFiltrarCliente.Text.Trim();
-            bsClientes.DataSource = string.IsNullOrEmpty(filtro)
-                ? clientes
-                : clientes.Where(c => c.DNI.ToString().Contains(filtro)
-                                   || (c.Nombre?.Contains(filtro, StringComparison.OrdinalIgnoreCase) ?? false))
-                          .ToList();
-        }
+            lstSugerencias.KeyDown += lstSugerencias_KeyDown;
+            lstSugerencias.MouseClick += (_, _) => ElegirSugerencia();
+            lstSugerencias.Leave += (_, _) => BeginInvoke(() => { if (!txtBuscar.Focused) OcultarSugerencias(); });
 
-        private void btnSeleccionarCliente_Click(object sender, EventArgs e)
-        {
-            if (dgvClientes.CurrentRow?.DataBoundItem is not ClienteDTO cliente)
+            numCantidad.KeyDown += (_, e) =>
             {
-                MessageBox.Show("Seleccione un cliente.", "Sin selección", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (e.KeyCode == Keys.Enter)
+                {
+                    e.SuppressKeyPress = true;
+                    AgregarSeleccionado((int)numCantidad.Value);
+                }
+            };
+            btnAgregar.Click += (_, _) => AgregarSeleccionado((int)numCantidad.Value);
+            numCantidad.Maximum = 100_000;
+        }
+
+        private void txtBuscar_KeyDown(object? sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Enter:
+                    e.SuppressKeyPress = true;
+                    timerBusqueda.Stop();
+                    ResolverBusqueda();
+                    break;
+                case Keys.Down when lstSugerencias.Visible && lstSugerencias.Items.Count > 0:
+                    e.SuppressKeyPress = true;
+                    lstSugerencias.Focus();
+                    lstSugerencias.SelectedIndex = Math.Max(0, lstSugerencias.SelectedIndex);
+                    break;
+            }
+        }
+
+        private void lstSugerencias_KeyDown(object? sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Enter:
+                    e.SuppressKeyPress = true;
+                    ElegirSugerencia();
+                    break;
+                case Keys.Up when lstSugerencias.SelectedIndex <= 0:
+                    e.SuppressKeyPress = true;
+                    txtBuscar.Focus();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Enter en el buscador. Prioridad: 1) código de barras/ISBN exacto → se agrega 1 unidad directo
+        /// (flujo de lector); 2) sugerencia resaltada o resultado único → se selecciona; 3) si no, se muestran opciones.
+        /// </summary>
+        private void ResolverBusqueda()
+        {
+            string texto = txtBuscar.Text.Trim();
+            if (texto.Length == 0) return;
+
+            var isbn = Libro.NormalizarISBN(texto);
+            if (isbn != null && isbn.Length >= 8 && catalogoPorIsbn.TryGetValue(isbn, out var porCodigo))
+            {
+                OcultarSugerencias();
+                SeleccionarLibro(porCodigo, moverFoco: false);
+                if (AgregarSeleccionado(1))
+                    txtBuscar.Clear();
                 return;
             }
 
-            // Sin confirmación extra: el cliente se puede cambiar en cualquier momento con "Seleccionar otro".
-            clienteActual = cliente;
-            gbSeleccionarCliente.Enabled = false;
-            lblClienteSeleccionado.Visible = true;
-            lblNombreCliente.Text = cliente.Nombre;
-            lblNombreCliente.Visible = true;
-            btnSelectOtroCliente.Visible = true;
-            gbSeleccionarLibros.Enabled = true;
-            txtFiltrarLibro.Focus();
-        }
-
-        private void btnSelectOtroCliente_Click(object sender, EventArgs e)
-        {
-            // El carrito se conserva: cambiar de cliente no obliga a volver a cargar los libros.
-            clienteActual = null;
-            gbSeleccionarCliente.Enabled = true;
-            gbSeleccionarLibros.Enabled = false;
-            btnSelectOtroCliente.Visible = false;
-            lblClienteSeleccionado.Visible = false;
-            lblNombreCliente.Visible = false;
-            lblNombreCliente.Text = "";
-            txtFiltrarCliente.Focus();
-        }
-
-        #endregion
-
-        #region Paso 2: búsqueda y carrito
-
-        private void AplicarFiltroLibros()
-        {
-            string filtro = txtFiltrarLibro.Text.Trim();
-            bsLibros.DataSource = string.IsNullOrEmpty(filtro)
-                ? catalogo
-                : catalogo.Where(l => Contiene(l.Titulo, filtro) || Contiene(l.Autor, filtro) || Contiene(l.Editorial, filtro))
-                          .ToList();
-            MostrarLibroSeleccionado();
-
-            static bool Contiene(string? texto, string filtro) =>
-                texto?.Contains(filtro, StringComparison.OrdinalIgnoreCase) ?? false;
-        }
-
-        private void txtFiltrar_TextChanged(object sender, EventArgs e)
-        {
-            timerFiltroLibros.Stop();
-            timerFiltroLibros.Start();
-        }
-
-        private void btnFiltrar_Click(object sender, EventArgs e)
-        {
-            timerFiltroLibros.Stop();
-            AplicarFiltroLibros();
-            dgvLibros.Focus();
-        }
-
-        private void btnBorrarFiltros_Click(object sender, EventArgs e)
-        {
-            txtFiltrarLibro.Text = string.Empty;
-            timerFiltroLibros.Stop();
-            AplicarFiltroLibros();
-            txtFiltrarLibro.Focus();
-        }
-
-        private void txtFiltrarLibro_KeyDown(object? sender, KeyEventArgs e)
-        {
-            if (e.KeyCode is Keys.Enter or Keys.Down)
+            var coincidencias = BuscarEnCatalogo(texto).Take(2).ToList();
+            if (coincidencias.Count == 1)
             {
-                e.SuppressKeyPress = true;
-                timerFiltroLibros.Stop();
-                AplicarFiltroLibros();
-                dgvLibros.Focus();
+                OcultarSugerencias();
+                SeleccionarLibro(coincidencias[0], moverFoco: true);
+            }
+            else if (coincidencias.Count == 0)
+            {
+                MostrarEstado($"No se encontró ningún libro para \"{texto}\".", esError: true);
+            }
+            else
+            {
+                MostrarSugerencias();
+                lstSugerencias.Focus();
+                lstSugerencias.SelectedIndex = 0;
             }
         }
 
-        private void dgvLibros_KeyDown(object? sender, KeyEventArgs e)
+        private IEnumerable<LibroDTO> BuscarEnCatalogo(string texto) =>
+            catalogo.Where(l => Contiene(l.Titulo, texto) || Contiene(l.Autor, texto) || Contiene(l.Editorial, texto)
+                                || (l.ISBN?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .OrderBy(l => l.Titulo);
+
+        private static bool Contiene(string? campo, string texto) =>
+            campo?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false;
+
+        private void MostrarSugerencias()
         {
-            if (e.KeyCode == Keys.Enter)
+            string texto = txtBuscar.Text.Trim();
+            if (texto.Length < 2)
             {
-                e.SuppressKeyPress = true;  // evita que Enter baje de fila
+                OcultarSugerencias();
+                return;
+            }
+
+            var sugerencias = BuscarEnCatalogo(texto)
+                .Take(MaxSugerencias)
+                .Select(l => new SugerenciaLibro(l, StockDisponible(l)))
+                .ToArray();
+
+            if (sugerencias.Length == 0)
+            {
+                OcultarSugerencias();
+                return;
+            }
+
+            lstSugerencias.BeginUpdate();
+            lstSugerencias.Items.Clear();
+            lstSugerencias.Items.AddRange(sugerencias);
+            lstSugerencias.EndUpdate();
+
+            // Se ubica justo debajo del buscador, por encima de la grilla.
+            var origen = PointToClient(txtBuscar.Parent!.PointToScreen(txtBuscar.Location));
+            lstSugerencias.Location = new Point(origen.X, origen.Y + txtBuscar.Height + 2);
+            lstSugerencias.Width = Math.Max(txtBuscar.Width, 760);
+            lstSugerencias.Height = Math.Min(260, lstSugerencias.ItemHeight * sugerencias.Length + 6);
+            lstSugerencias.Visible = true;
+            lstSugerencias.BringToFront();
+        }
+
+        private void OcultarSugerencias() => lstSugerencias.Visible = false;
+
+        private void ElegirSugerencia()
+        {
+            if (lstSugerencias.SelectedItem is not SugerenciaLibro s) return;
+            OcultarSugerencias();
+            SeleccionarLibro(s.Libro, moverFoco: true);
+        }
+
+        private int CantidadEnCarrito(int libroId) => carrito.Where(l => l.LibroId == libroId).Sum(l => l.Cantidad);
+
+        private int StockDisponible(LibroDTO libro) => libro.Stock - CantidadEnCarrito(libro.LIBDTO_ID);
+
+        /// <summary>Muestra el libro elegido (precio y stock visibles) y, si se pide, pasa el foco a la cantidad.</summary>
+        private void SeleccionarLibro(LibroDTO? libro, bool moverFoco)
+        {
+            libroSeleccionado = libro;
+            if (libro == null)
+            {
+                lblSeleccion.Text = string.Empty;
+                return;
+            }
+
+            int disponible = StockDisponible(libro);
+            lblSeleccion.Text = $"{libro.Titulo} — ${libro.Precio:N2} — Stock disponible: {disponible}";
+            lblSeleccion.ForeColor = disponible > 0 ? Color.White : Color.Gold;
+            numCantidad.Value = 1;
+
+            if (moverFoco)
+            {
                 numCantidad.Focus();
                 numCantidad.Select(0, numCantidad.Text.Length);
             }
         }
 
-        private void numCantidad_KeyDown(object? sender, KeyEventArgs e)
+        /// <summary>Agrega (o suma a la línea existente) validando contra el stock en memoria.</summary>
+        private bool AgregarSeleccionado(int cantidad)
         {
-            if (e.KeyCode == Keys.Enter)
-            {
-                e.SuppressKeyPress = true;
-                btnAgregarLibro_Click(this, EventArgs.Empty);
-            }
-        }
-
-        private void dgvLibros_CellClick(object sender, DataGridViewCellEventArgs e) => MostrarLibroSeleccionado();
-
-        private LibroDTO? LibroSeleccionado => dgvLibros.CurrentRow?.DataBoundItem as LibroDTO;
-
-        private int CantidadEnCarrito(int libroId) =>
-            carrito.Where(l => l.LibroId == libroId).Sum(l => l.Cantidad);
-
-        /// <summary>Stock que todavía se puede agregar: stock del catálogo menos lo que ya está en el carrito.</summary>
-        private int StockDisponible(LibroDTO libro) => libro.Stock - CantidadEnCarrito(libro.LIBDTO_ID);
-
-        private void MostrarLibroSeleccionado()
-        {
-            var libro = LibroSeleccionado;
+            if (procesando) return false;
+            var libro = libroSeleccionado;
             if (libro == null)
             {
-                lblTitulo.Text = "";
-                lblPrecio.Text = "";
-                btnAgregarLibro.Enabled = false;
-                return;
-            }
-
-            int disponible = StockDisponible(libro);
-            lblTitulo.Text = libro.Titulo;
-            lblPrecio.Text = libro.Precio.ToString("N2");
-            numCantidad.Maximum = Math.Max(1, disponible);
-            btnAgregarLibro.Enabled = disponible > 0;
-            numCantidad.Enabled = disponible > 0;
-        }
-
-        /// <summary>Atenúa los libros sin stock disponible (contando lo que ya está en el carrito).</summary>
-        private void dgvLibros_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (e.RowIndex < 0 || dgvLibros.Rows[e.RowIndex].DataBoundItem is not LibroDTO libro) return;
-            if (StockDisponible(libro) <= 0)
-                e.CellStyle.ForeColor = Color.Gray;
-        }
-
-        private void btnAgregarLibro_Click(object sender, EventArgs e) => AgregarLibroSeleccionado((int)numCantidad.Value);
-
-        private void AgregarLibroSeleccionado(int cantidad)
-        {
-            var libro = LibroSeleccionado;
-            if (libro == null)
-            {
-                MessageBox.Show("Seleccione un libro.", "Sin selección", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                MostrarEstado("Busque y seleccione un libro primero.", esError: true);
+                txtBuscar.Focus();
+                return false;
             }
 
             int disponible = StockDisponible(libro);
             if (cantidad > disponible)
             {
-                MessageBox.Show($"No hay suficiente stock de '{libro.Titulo}'.\nDisponible: {disponible}, solicitado: {cantidad}.",
-                    "Stock insuficiente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                MostrarEstado(disponible <= 0
+                    ? $"Sin stock disponible de '{libro.Titulo}'."
+                    : $"Stock insuficiente de '{libro.Titulo}': disponible {disponible}.", esError: true);
+                System.Media.SystemSounds.Beep.Play();
+                return false;
             }
 
-            // Si el libro ya está en el carrito se suma la cantidad en lugar de rechazarlo.
             var existente = carrito.FirstOrDefault(l => l.LibroId == libro.LIBDTO_ID);
             if (existente != null)
             {
@@ -399,181 +447,359 @@ namespace Vista
             }
             else
             {
-                carrito.Add(new LineaCarrito
+                existente = new LineaCarrito
                 {
                     LibroId = libro.LIBDTO_ID,
-                    Titulo = libro.Titulo,
-                    Autor = libro.Autor,
-                    Editorial = libro.Editorial,
-                    Precio = libro.Precio,
+                    Producto = $"{libro.Titulo} — {libro.Autor}",
+                    PrecioUnitario = libro.Precio,
                     Cantidad = cantidad,
                     StockMaximo = libro.Stock,
-                });
+                };
+                carrito.Add(existente);
             }
 
-            ActualizarTotales();
+            SeleccionarFilaCarrito(existente);
+            MostrarEstado($"Agregado: {cantidad} × {libro.Titulo}", esError: false);
+            Recalcular();
+
+            // Listo para el próximo producto.
+            libroSeleccionado = null;
+            lblSeleccion.Text = string.Empty;
             numCantidad.Value = 1;
-            txtFiltrarLibro.Focus();
-            txtFiltrarLibro.SelectAll();
+            txtBuscar.Clear();
+            txtBuscar.Focus();
+            return true;
         }
 
-        private void dgvVentas_CellValidating(object? sender, DataGridViewCellValidatingEventArgs e)
+        private void MostrarEstado(string mensaje, bool esError)
         {
-            if (dgvVentas.Columns[e.ColumnIndex].Name != ColCantidad) return;
-            if (dgvVentas.Rows[e.RowIndex].DataBoundItem is not LineaCarrito linea) return;
-
-            if (!int.TryParse(Convert.ToString(e.FormattedValue), out int nueva) || nueva < 1)
-            {
-                dgvVentas.Rows[e.RowIndex].ErrorText = "La cantidad debe ser un número mayor a 0.";
-                e.Cancel = true;
-            }
-            else if (nueva > linea.StockMaximo)
-            {
-                dgvVentas.Rows[e.RowIndex].ErrorText = $"Stock disponible: {linea.StockMaximo}.";
-                e.Cancel = true;
-            }
-        }
-
-        private void dgvVentas_KeyDown(object? sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Delete && !dgvVentas.IsCurrentCellInEditMode)
-            {
-                e.SuppressKeyPress = true;
-                btnEliminarLibro_Click(this, EventArgs.Empty);
-            }
-        }
-
-        private void btnEliminarLibro_Click(object sender, EventArgs e)
-        {
-            if (dgvVentas.CurrentRow?.DataBoundItem is not LineaCarrito linea)
-            {
-                MessageBox.Show("Seleccione un libro de la venta para eliminar.", "Sin selección", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var confirmacion = MessageBox.Show($"¿Desea quitar '{linea.Titulo}' de la venta?", "Confirmar eliminación",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-            if (confirmacion == DialogResult.Yes)
-            {
-                carrito.Remove(linea);
-                ActualizarTotales();
-            }
-        }
-
-        private decimal Subtotal => carrito.Sum(l => l.Subtotal);
-
-        /// <summary>Único lugar donde se recalcula el total y se muestran/ocultan los controles del paso 3.</summary>
-        private void ActualizarTotales()
-        {
-            if (carrito.Count == 0)
-            {
-                sinLibrosVenta();
-            }
-            else
-            {
-                lblPasoTres.Visible = true;
-                dgvVentas.Visible = true;
-                btnEliminarLibro.Visible = true;
-                btnGenerarVenta.Visible = true;
-                lblTotal.Text = "Subtotal:";
-                lblTotalNumero.Text = Subtotal.ToString("N2");
-            }
-
-            dgvLibros.Invalidate();  // re-evalúa el atenuado de filas sin stock
-            MostrarLibroSeleccionado();
-        }
-
-        void sinLibrosVenta()
-        {
-            lblPasoTres.Visible = false;
-            lblTotal.Text = "";
-            lblTotalNumero.Text = "";
-            dgvVentas.Visible = false;
-            btnEliminarLibro.Visible = false;
-            btnGenerarVenta.Visible = false;
-        }
-
-        /// <summary>Tras recargar el catálogo, actualiza el tope de stock de las líneas que siguen en el carrito.</summary>
-        private void SincronizarStockCarrito()
-        {
-            var stockPorId = catalogo.ToDictionary(l => l.LIBDTO_ID, l => l.Stock);
-            foreach (var linea in carrito)
-                linea.StockMaximo = stockPorId.TryGetValue(linea.LibroId, out int stock) ? stock : 0;
+            lblEstado.Text = mensaje;
+            lblEstado.ForeColor = esError ? Color.Gold : Color.White;
         }
 
         #endregion
 
-        #region Paso 3: cobro y persistencia
+        #region Carrito
 
-        private bool ValidarAntesDeCobrar()
+        private void ConfigurarCarrito()
         {
-            if (dgvVentas.IsCurrentCellInEditMode && !dgvVentas.EndEdit())
-                return false;  // hay una cantidad inválida a medio editar
+            typeof(DataGridView)
+                .GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)?
+                .SetValue(dgvCarrito, true);
 
-            if (clienteActual == null)
+            dgvCarrito.AutoGenerateColumns = false;
+            dgvCarrito.DataSource = carrito;
+            colPrecio.DefaultCellStyle.Format = "N2";
+            colSubtotal.DefaultCellStyle.Format = "N2";
+            colPrecio.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            colSubtotal.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            colCantidad.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            dgvCarrito.CellContentClick += dgvCarrito_CellContentClick;
+            dgvCarrito.CellValidating += dgvCarrito_CellValidating;
+            dgvCarrito.CellEndEdit += (_, e) =>
             {
-                MessageBox.Show("Debe seleccionar un cliente.", "Cliente no seleccionado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-            if (carrito.Count == 0)
-            {
-                MessageBox.Show("Debe agregar al menos un libro a la venta.", "Venta sin productos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-            var excedida = carrito.FirstOrDefault(l => l.Cantidad > l.StockMaximo);
-            if (excedida != null)
-            {
-                MessageBox.Show($"La cantidad de '{excedida.Titulo}' supera el stock disponible ({excedida.StockMaximo}).",
-                    "Stock insuficiente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-            return true;
+                dgvCarrito.Rows[e.RowIndex].ErrorText = string.Empty;
+                carrito.ResetItem(e.RowIndex);
+                Recalcular();
+            };
+            dgvCarrito.DataError += (_, e) => e.Cancel = true;
+            dgvCarrito.KeyDown += dgvCarrito_KeyDown;
+            carrito.ListChanged += (_, _) => btnRegistrar.Enabled = !procesando && carrito.Count > 0;
         }
 
-        private async void btnGenerarVenta_Click(object sender, EventArgs e)
+        private LineaCarrito? LineaActual => dgvCarrito.CurrentRow?.DataBoundItem as LineaCarrito;
+
+        private void dgvCarrito_CellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
-            // Guard contra doble clic / doble F12: el botón se deshabilita, pero el flag cubre también el atajo.
-            if (procesando || !ValidarAntesDeCobrar()) return;
+            if (e.RowIndex < 0 || procesando || dgvCarrito.Rows[e.RowIndex].DataBoundItem is not LineaCarrito linea) return;
+
+            if (e.ColumnIndex == colMenos.Index) CambiarCantidad(linea, -1);
+            else if (e.ColumnIndex == colMas.Index) CambiarCantidad(linea, +1);
+            else if (e.ColumnIndex == colQuitar.Index) QuitarLinea(linea);
+        }
+
+        private void dgvCarrito_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (dgvCarrito.IsCurrentCellInEditMode || procesando || LineaActual is not LineaCarrito linea) return;
+
+            switch (e.KeyCode)
+            {
+                case Keys.Delete:
+                    QuitarLinea(linea);
+                    e.Handled = true;
+                    break;
+                case Keys.Add or Keys.Oemplus:
+                    CambiarCantidad(linea, +1);
+                    e.Handled = e.SuppressKeyPress = true;
+                    break;
+                case Keys.Subtract or Keys.OemMinus:
+                    CambiarCantidad(linea, -1);
+                    e.Handled = e.SuppressKeyPress = true;
+                    break;
+            }
+        }
+
+        private void CambiarCantidad(LineaCarrito linea, int delta)
+        {
+            int nueva = linea.Cantidad + delta;
+            if (nueva < 1)
+            {
+                MostrarEstado("La cantidad mínima es 1. Use \"Quitar\" (Supr) para sacar la línea.", esError: true);
+                return;
+            }
+            if (nueva > linea.StockMaximo)
+            {
+                MostrarEstado($"Stock disponible: {linea.StockMaximo}.", esError: true);
+                System.Media.SystemSounds.Beep.Play();
+                return;
+            }
+
+            linea.Cantidad = nueva;
+            carrito.ResetItem(carrito.IndexOf(linea));
+            Recalcular();
+        }
+
+        private void QuitarLinea(LineaCarrito linea)
+        {
+            int indice = carrito.IndexOf(linea);
+            carrito.Remove(linea);
+            MostrarEstado($"Quitado: {linea.Producto}", esError: false);
+            Recalcular();
+
+            if (carrito.Count > 0)
+                dgvCarrito.CurrentCell = dgvCarrito.Rows[Math.Min(indice, carrito.Count - 1)].Cells[colProducto.Index];
+            else
+                txtBuscar.Focus();
+        }
+
+        private void SeleccionarFilaCarrito(LineaCarrito linea)
+        {
+            int i = carrito.IndexOf(linea);
+            if (i >= 0 && i < dgvCarrito.Rows.Count)
+                dgvCarrito.CurrentCell = dgvCarrito.Rows[i].Cells[colProducto.Index];
+        }
+
+        private void dgvCarrito_CellValidating(object? sender, DataGridViewCellValidatingEventArgs e)
+        {
+            if (e.ColumnIndex != colCantidad.Index || dgvCarrito.Rows[e.RowIndex].DataBoundItem is not LineaCarrito linea) return;
+
+            if (!int.TryParse(Convert.ToString(e.FormattedValue), out int nueva) || nueva < 1)
+            {
+                dgvCarrito.Rows[e.RowIndex].ErrorText = "La cantidad debe ser un número entero mayor a 0.";
+                e.Cancel = true;
+            }
+            else if (nueva > linea.StockMaximo)
+            {
+                dgvCarrito.Rows[e.RowIndex].ErrorText = $"Stock disponible: {linea.StockMaximo}.";
+                e.Cancel = true;
+            }
+        }
+
+        #endregion
+
+        #region Cierre: importes, medio de pago y vuelto
+
+        private void ConfigurarCierre()
+        {
+            numDescuento.Maximum = ConfiguracionVentas.DescuentoMaximoPorcentaje;
+            // El descuento manual requiere permiso (el Administrador siempre lo tiene).
+            numDescuento.Enabled = PermisoService.Instancia.TienePermiso("AplicarDescuento");
+            numDescuento.ValueChanged += (_, _) => Recalcular();
+
+            cbMetodoPago.SelectedIndexChanged += (_, _) =>
+            {
+                montoRecibidoEditado = false;  // al cambiar de medio, se vuelve a proponer el total
+                Recalcular();
+            };
+            numMontoRecibido.ValueChanged += (_, _) =>
+            {
+                if (actualizandoMonto) return;
+                montoRecibidoEditado = true;
+                Recalcular();
+            };
+            numMontoRecibido.Enter += (_, _) => numMontoRecibido.Select(0, numMontoRecibido.Text.Length);
+            numMontoRecibido.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    e.SuppressKeyPress = true;
+                    btnRegistrar.PerformClick();
+                }
+            };
+
+            btnRegistrar.Click += async (_, _) => await RegistrarVentaAsync();
+            btnCancelar.Click += (_, _) => CancelarVenta();
+            btnImprimir.Click += async (_, _) => await ImprimirUltimoTicketAsync();
+            btnMediosPago.Click += async (_, _) => await GestionarMediosPagoAsync();
+            toolTip.SetToolTip(btnMediosPago, "Administrar medios de pago");
+
+            btnRegistrar.Enabled = false;
+            btnImprimir.Enabled = false;
+        }
+
+        private MetodoPago? MetodoSeleccionado => cbMetodoPago.SelectedItem as MetodoPago;
+
+        private bool EsEfectivo => MetodoSeleccionado is MetodoPago m && MetodoPagoStrategyFactory.EsEfectivo(m);
+
+        private decimal SubtotalCarrito => carrito.Sum(l => l.Subtotal);
+
+        /// <summary>Recalcula y muestra todos los importes. Es la única fuente de los totales en pantalla.</summary>
+        private void Recalcular()
+        {
+            var metodo = MetodoSeleccionado;
+            bool efectivo = EsEfectivo;
+
+            // Primero sin monto recibido para conocer el total y proponerlo como "pago exacto".
+            var previo = CalculadoraVenta.Calcular(SubtotalCarrito, numDescuento.Value, metodo, null, ConfiguracionVentas.TasaIVA);
+            if (!efectivo || !montoRecibidoEditado)
+                FijarMontoRecibido(previo.Total);
+
+            calculo = CalculadoraVenta.Calcular(SubtotalCarrito, numDescuento.Value, metodo, numMontoRecibido.Value, ConfiguracionVentas.TasaIVA);
+
+            lblSubtotal.Text = Moneda(calculo.Subtotal);
+            lblDescuento.Text = calculo.Descuento == 0 ? Moneda(0) : "-" + Moneda(calculo.Descuento);
+            lblAjuste.Text = (calculo.AjusteMedioPago > 0 ? "+" : "") + Moneda(calculo.AjusteMedioPago);
+            lblAjusteTitulo.Text = calculo.AjusteMedioPago switch
+            {
+                > 0 => "Recargo medio de pago",
+                < 0 => "Descuento medio de pago",
+                _ => "Recargo/desc. medio pago",
+            };
+            lblIVA.Text = Moneda(calculo.IVA);
+            lblTotal.Text = Moneda(calculo.Total);
+
+            numMontoRecibido.Enabled = efectivo && !procesando;
+            lblRecibidoTitulo.Text = efectivo ? "Monto recibido (F6)" : "Monto a cobrar";
+            if (calculo.PagoInsuficiente && carrito.Count > 0)
+            {
+                lblVueltoTitulo.Text = "Falta";
+                lblVuelto.Text = Moneda(calculo.Total - calculo.Recibido);
+                lblVuelto.ForeColor = Color.Gold;
+            }
+            else
+            {
+                lblVueltoTitulo.Text = "Vuelto";
+                lblVuelto.Text = Moneda(calculo.Vuelto);
+                lblVuelto.ForeColor = Color.White;
+            }
+
+            btnRegistrar.Enabled = !procesando && carrito.Count > 0;
+        }
+
+        private void FijarMontoRecibido(decimal valor)
+        {
+            actualizandoMonto = true;
+            numMontoRecibido.Value = Math.Clamp(valor, numMontoRecibido.Minimum, numMontoRecibido.Maximum);
+            actualizandoMonto = false;
+        }
+
+        private static string Moneda(decimal valor) => $"${valor:N2}";
+
+        private async Task GestionarMediosPagoAsync()
+        {
+            using (var frm = new FrmMetodosPago())
+                frm.ShowDialog(this);
+
+            try { await CargarMetodosPagoAsync(); }
+            catch (Exception ex) { MostrarError("No se pudieron recargar los medios de pago.", ex); }
+        }
+
+        #endregion
+
+        #region Registrar, imprimir, cancelar
+
+        /// <summary>Validaciones de pantalla. Las mismas reglas se vuelven a verificar en el servicio contra la base.</summary>
+        private bool ValidarAntesDeRegistrar()
+        {
+            if (dgvCarrito.IsCurrentCellInEditMode && !dgvCarrito.EndEdit())
+                return false;
+
+            if (carrito.Count == 0)
+                return Avisar("Agregue al menos un libro a la venta.", txtBuscar);
+
+            if (clienteActual == null)
+                return Avisar("Seleccione un cliente o use \"Consumidor final\".", cbCliente);
+
+            if (MetodoSeleccionado == null)
+                return Avisar("Seleccione un medio de pago.", cbMetodoPago);
+
+            var excedida = carrito.FirstOrDefault(l => l.Cantidad > l.StockMaximo);
+            if (excedida != null)
+                return Avisar($"La cantidad de '{excedida.Producto}' supera el stock disponible ({excedida.StockMaximo}).", dgvCarrito);
+
+            Recalcular();
+            if (calculo.PagoInsuficiente)
+                return Avisar($"El monto recibido ({Moneda(calculo.Recibido)}) no cubre el total ({Moneda(calculo.Total)}).", numMontoRecibido);
+
+            return true;
+
+            bool Avisar(string mensaje, Control foco)
+            {
+                MessageBox.Show(mensaje, "Revise la venta", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                foco.Focus();
+                return false;
+            }
+        }
+
+        private async Task RegistrarVentaAsync()
+        {
+            // Guard contra doble clic / doble F5: el botón se deshabilita, pero el flag cubre también el atajo.
+            if (procesando || !ValidarAntesDeRegistrar()) return;
 
             var cliente = clienteActual!;
-            decimal totalMostrado;
-            int metodoPagoId;
+            var metodo = MetodoSeleccionado!;
+            var resumen = calculo;
 
-            using (var frmCobro = new FrmConcretarVenta(cliente, Subtotal))
+            var confirmacion = MessageBox.Show(
+                $"Cliente: {cliente}\n" +
+                $"Medio de pago: {metodo.MP_Nombre}\n" +
+                $"Artículos: {carrito.Sum(l => l.Cantidad)}\n\n" +
+                $"TOTAL: {Moneda(resumen.Total)}" +
+                (EsEfectivo ? $"\nRecibido: {Moneda(resumen.Recibido)}\nVuelto: {Moneda(resumen.Vuelto)}" : "") +
+                "\n\n¿Registrar la venta?",
+                "Confirmar venta", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirmacion != DialogResult.Yes) return;
+
+            var solicitud = new SolicitudVenta
             {
-                if (frmCobro.ShowDialog(this) != DialogResult.OK || frmCobro.MetodoPagoSeleccionado == null)
-                    return;
-                metodoPagoId = frmCobro.MetodoPagoSeleccionado.MP_ID;
-                totalMostrado = frmCobro.TotalFinal;
-            }
+                ClientePersonaId = cliente.EsConsumidorFinal ? null : cliente.Cliente.CLIDTO_ID,
+                MetodoPagoId = metodo.MP_ID,
+                PorcentajeDescuento = numDescuento.Value,
+                MontoRecibido = EsEfectivo ? numMontoRecibido.Value : null,
+                Usuario = UsuarioActual,
+                Items = carrito.Select(l => new ItemVentaSolicitud(l.LibroId, l.Cantidad)).ToList(),
+            };
 
             SetProcesando(true);
             try
             {
-                var items = carrito.Select(l => l.ToDto()).ToList();
-                var resultado = await FacadeVentas.Instancia.RealizarVentaAsync(cliente.CLIDTO_ID, metodoPagoId, items, cts.Token);
+                var resultado = await FacadeVentas.Instancia.RegistrarVentaAsync(solicitud, resumen.Total, cts.Token);
 
                 if (!resultado.Exito)
                 {
-                    MessageBox.Show(resultado.Mensaje + "\n\nNo se registró la venta. El stock se actualizó; revise el carrito.",
-                        "Venta no registrada", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    await CargarCatalogoAsync();
+                    MessageBox.Show(resultado.Mensaje + "\n\nLa venta NO se registró.", "Venta no registrada",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    await CargarCatalogoAsync();   // stock y precios frescos para corregir el carrito
+                    Recalcular();
                     return;
                 }
 
-                string aviso = resultado.Total != totalMostrado
-                    ? $"\n\nAtención: el total registrado difiere del mostrado (${totalMostrado:N2}) porque cambiaron precios."
-                    : string.Empty;
+                ultimaVentaId = resultado.VentaId;
+                var final = resultado.Calculo ?? resumen;
+                lblUltimaVenta.Text = $"✔ {resultado.Comprobante} registrada · Total {Moneda(final.Total)}" +
+                                      (final.Vuelto > 0 ? $" · Vuelto {Moneda(final.Vuelto)}" : "");
 
-                var verTicket = MessageBox.Show(
-                    $"Venta N° {resultado.VentaId} registrada.\nTotal cobrado: ${resultado.Total:N2}{aviso}\n\n¿Desea ver el ticket?",
+                LimpiarVenta();
+                await CargarCatalogoAsync();
+
+                var imprimir = MessageBox.Show(
+                    $"Venta {resultado.Comprobante} registrada.\n" +
+                    (final.Vuelto > 0 ? $"\nVUELTO: {Moneda(final.Vuelto)}\n" : "") +
+                    "\n¿Imprimir el ticket?",
                     "Venta registrada", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-
-                ReiniciarVenta();
-                await CargarCatalogoAsync();  // stock fresco para la próxima venta
-
-                if (verTicket == DialogResult.Yes)
-                    await MostrarTicketAsync(resultado.VentaId);
+                if (imprimir == DialogResult.Yes)
+                    await ImprimirUltimoTicketAsync();
             }
             catch (OperationCanceledException)
             {
@@ -581,97 +807,137 @@ namespace Vista
             }
             catch (Exception ex)
             {
-                MostrarError("No se pudo registrar la venta. No se guardó ningún cambio.", ex);
+                MostrarError("No se pudo registrar la venta. No se guardó ningún cambio; puede reintentar.", ex);
             }
             finally
             {
                 SetProcesando(false);
+                txtBuscar.Focus();
             }
         }
 
-        private async Task MostrarTicketAsync(int ventaId)
+        private async Task ImprimirUltimoTicketAsync()
         {
+            if (ultimaVentaId is not int id)
+            {
+                MessageBox.Show("Todavía no se registró ninguna venta en esta sesión.", "Imprimir ticket",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             try
             {
-                var ticket = await ControladoraVentas.Instancia.GenerarTicketAsync(ventaId, cts.Token);
+                var ticket = await ControladoraVentas.Instancia.GenerarTicketAsync(id, cts.Token);
                 if (ticket == null) return;
                 using var frmTicket = new FrmTickets(ticket);
                 frmTicket.ShowDialog(this);
             }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                MostrarError("La venta se registró, pero no se pudo generar el ticket.", ex);
+                MostrarError("La venta está registrada, pero no se pudo generar el ticket. Puede reimprimirlo desde Gestionar ventas.", ex);
             }
         }
 
-        /// <summary>Bloquea la UI mientras se guarda, para evitar doble cobro o cambios en el carrito a mitad de la operación.</summary>
+        /// <summary>Esc: descarta la venta en curso (con confirmación si hay algo cargado).</summary>
+        private void CancelarVenta()
+        {
+            if (procesando) return;
+            if (carrito.Count > 0 &&
+                MessageBox.Show("¿Descartar la venta en curso?", "Cancelar venta", MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                return;
+
+            LimpiarVenta();
+            MostrarEstado("Venta descartada.", esError: false);
+        }
+
+        /// <summary>Deja la pantalla lista para la próxima venta.</summary>
+        private void LimpiarVenta()
+        {
+            carrito.Clear();
+            libroSeleccionado = null;
+            lblSeleccion.Text = string.Empty;
+            txtBuscar.Clear();
+            numCantidad.Value = 1;
+            numDescuento.Value = 0;
+            montoRecibidoEditado = false;
+            EstablecerCliente(consumidorFinal);
+            OcultarSugerencias();
+            ActualizarEncabezado();
+            Recalcular();
+            txtBuscar.Focus();
+        }
+
+        /// <summary>Bloquea la pantalla mientras se registra, para evitar doble cobro o cambios a mitad de la operación.</summary>
         private void SetProcesando(bool valor)
         {
             procesando = valor;
             UseWaitCursor = valor;
-            gbSeleccionarLibros.Enabled = !valor && clienteActual != null;
-            gbSeleccionarCliente.Enabled = !valor && clienteActual == null;
-            btnSelectOtroCliente.Enabled = !valor;
-            btnEliminarLibro.Enabled = !valor;
-            dgvVentas.Enabled = !valor;
-            btnVolverGestionarVEN.Enabled = !valor;
-            btnGenerarVenta.Enabled = !valor;
-
-            if (valor)
-            {
-                textoBotonCobrar = btnGenerarVenta.Text;
-                btnGenerarVenta.Text = "Procesando...";
-            }
-            else if (!string.IsNullOrEmpty(textoBotonCobrar))
-            {
-                btnGenerarVenta.Text = textoBotonCobrar;
-            }
-        }
-
-        /// <summary>Deja el formulario listo para la próxima venta (mismo flujo que al abrirlo).</summary>
-        private void ReiniciarVenta()
-        {
-            carrito.Clear();
-            clienteActual = null;
-            txtFiltrarLibro.Text = string.Empty;
-            txtFiltrarCliente.Text = string.Empty;
-            numCantidad.Value = 1;
-            gbSeleccionarCliente.Enabled = true;
-            lblNombreCliente.Text = "";
-            sinLibrosVenta();
-            modoInicio();
-            txtFiltrarCliente.Focus();
+            panelEncabezado.Enabled = !valor;
+            panelCarga.Enabled = !valor;
+            dgvCarrito.Enabled = !valor;
+            numDescuento.Enabled = !valor && PermisoService.Instancia.TienePermiso("AplicarDescuento");
+            cbMetodoPago.Enabled = !valor;
+            btnMediosPago.Enabled = !valor;
+            btnCancelar.Enabled = !valor;
+            btnImprimir.Enabled = !valor && ultimaVentaId != null;
+            btnRegistrar.Enabled = !valor && carrito.Count > 0;
+            btnRegistrar.Text = valor ? "Registrando..." : "Registrar venta (F5)";
+            numMontoRecibido.Enabled = !valor && EsEfectivo;
         }
 
         #endregion
 
-        #region Navegación, atajos y cierre
+        #region Atajos de teclado, navegación y cierre
 
-        private void FrmRealizarVenta_KeyDown(object? sender, KeyEventArgs e)
+        /// <summary>Atajos globales: funcionan con el foco en cualquier control del formulario.</summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (procesando) return;
+            if (procesando)
+                return keyData == Keys.Escape || base.ProcessCmdKey(ref msg, keyData);
 
-            if (e.KeyCode == Keys.F2 && gbSeleccionarLibros.Enabled)
+            switch (keyData)
             {
-                txtFiltrarLibro.Focus();
-                txtFiltrarLibro.SelectAll();
-                e.Handled = true;
+                case Keys.F2:
+                    txtBuscar.Focus();
+                    txtBuscar.SelectAll();
+                    return true;
+                case Keys.F3:
+                    cbCliente.Focus();
+                    cbCliente.SelectAll();
+                    return true;
+                case Keys.F4:
+                    cbMetodoPago.Focus();
+                    cbMetodoPago.DroppedDown = true;
+                    return true;
+                case Keys.F5:
+                    btnRegistrar.PerformClick();
+                    return true;
+                case Keys.F6:
+                    if (numMontoRecibido.Enabled) numMontoRecibido.Focus();
+                    return true;
+                case Keys.F8:
+                    btnImprimir.PerformClick();
+                    return true;
+                case Keys.Escape:
+                    // Esc cierra primero lo "pequeño": sugerencias, edición de celda, combo abierto.
+                    if (lstSugerencias.Visible) { OcultarSugerencias(); txtBuscar.Focus(); return true; }
+                    if (dgvCarrito.IsCurrentCellInEditMode || cbMetodoPago.DroppedDown || cbCliente.DroppedDown)
+                        return base.ProcessCmdKey(ref msg, keyData);
+                    CancelarVenta();
+                    return true;
             }
-            else if (e.KeyCode == Keys.F12 && btnGenerarVenta.Visible && btnGenerarVenta.Enabled)
-            {
-                btnGenerarVenta.PerformClick();
-                e.Handled = true;
-            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        private void btnVolverGestionarVEN_Click(object sender, EventArgs e)
+        private void Volver()
         {
+            if (procesando) return;
             if (carrito.Count > 0 &&
-                MessageBox.Show("Hay una venta en curso. ¿Desea descartarla?", "Venta en curso",
+                MessageBox.Show("Hay una venta en curso. ¿Desea descartarla y salir?", "Venta en curso",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
-            {
                 return;
-            }
 
             if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
                 principal.MostrarGestionarVentas();
@@ -681,18 +947,19 @@ namespace Vista
 
         private void FrmRealizarVenta_FormClosing(object? sender, FormClosingEventArgs e)
         {
-            // No se permite cerrar mientras se está guardando una venta.
+            // No se permite cerrar mientras se está registrando una venta.
             if (procesando)
             {
                 e.Cancel = true;
                 return;
             }
-            timerFiltroLibros.Stop();
+            timerBusqueda.Stop();
+            timerReloj.Stop();
             cts.Cancel();
         }
 
         private void MostrarError(string mensaje, Exception ex) =>
-            MessageBox.Show($"{mensaje}\n\nDetalle: {ex.GetBaseException().Message}", "Error",
+            MessageBox.Show($"{mensaje}\n\nDetalle técnico: {ex.GetBaseException().Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         #endregion
