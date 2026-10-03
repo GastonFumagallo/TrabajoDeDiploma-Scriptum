@@ -46,9 +46,31 @@ namespace Modelo.Contexto
         public virtual DbSet<MetodoPago> MetodosPago { get; set; }
         public virtual DbSet<ProveedorLibro> ProveedoresLibros {  get; set; }
         public virtual DbSet<OrdenReposicion> OrdenesReposicion { get; set; }
+        public virtual DbSet<PagoVenta> PagosVenta { get; set; }
+        public virtual DbSet<DetalleOrdenReposicion> DetallesOrdenReposicion { get; set; }
+        public virtual DbSet<MovimientoStock> MovimientosStock { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Búsqueda por código de barras en el punto de venta.
+            modelBuilder.Entity<Libro>()
+                .HasIndex(l => l.LIB_ISBN)
+                .IsUnique()
+                .HasFilter("[LIB_ISBN] IS NOT NULL");   // único sólo entre los libros que tienen ISBN
+
+            // Los pagos pertenecen a la venta (cascada); el medio de pago es un maestro (Restrict).
+            modelBuilder.Entity<PagoVenta>()
+                .HasOne(p => p.PAG_Venta)
+                .WithMany(v => v.VEN_Pagos)
+                .HasForeignKey(p => p.VEN_ID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PagoVenta>()
+                .HasOne(p => p.PAG_MetodoPago)
+                .WithMany()
+                .HasForeignKey(p => p.MP_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<ProveedorLibro>()
             .HasKey(pl => new { pl.PROV_ID, pl.LIB_ID });
 
@@ -96,17 +118,38 @@ namespace Modelo.Contexto
                 .HasForeignKey(l => l.GEN_ID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<OrdenReposicion>()
-                .HasOne(o => o.OR_Libro)
-                .WithMany()
-                .HasForeignKey(o => o.OR_LIB_ID)
-                .OnDelete(DeleteBehavior.Restrict);
-
+            // Órdenes de reposición: el proveedor y los libros son maestros (Restrict);
+            // los detalles pertenecen a la orden (cascada).
             modelBuilder.Entity<OrdenReposicion>()
                 .HasOne(o => o.OR_Proveedor)
                 .WithMany()
                 .HasForeignKey(o => o.OR_PROV_ID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdenReposicion>()
+                .HasIndex(o => o.OR_Estado);
+
+            modelBuilder.Entity<DetalleOrdenReposicion>()
+                .HasOne(d => d.DOR_Orden)
+                .WithMany(o => o.OR_Detalles)
+                .HasForeignKey(d => d.OR_ID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DetalleOrdenReposicion>()
+                .HasOne(d => d.DOR_Libro)
+                .WithMany()
+                .HasForeignKey(d => d.LIB_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Historial de stock: nunca se borra junto con el libro.
+            modelBuilder.Entity<MovimientoStock>()
+                .HasOne(m => m.MOV_Libro)
+                .WithMany()
+                .HasForeignKey(m => m.LIB_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MovimientoStock>()
+                .HasIndex(m => new { m.LIB_ID, m.MOV_Fecha });
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using Modelo;
+﻿using Microsoft.EntityFrameworkCore;
+using Modelo;
 using Modelo.Contexto;
 using System;
 using System.Collections.Generic;
@@ -19,8 +20,18 @@ namespace Controladora
                 {
                     instancia = new ControladoraMetodosPago();
                 }
-                return instancia;   
+                return instancia;
             }
+        }
+
+        /// <summary>Medios de pago para combos. Con <paramref name="soloActivos"/> se ocultan los dados de baja (punto de venta).</summary>
+        public async Task<List<MetodoPago>> ObtenerMetodosPagoAsync(bool soloActivos, CancellationToken ct = default)
+        {
+            await using var db = new Libreria();
+            var query = db.MetodosPago.AsNoTracking();
+            if (soloActivos)
+                query = query.Where(m => m.MP_Estado);
+            return await query.OrderBy(m => m.MP_Nombre).ToListAsync(ct);
         }
 
         public bool AgregarMetodo(MetodoPago metodoDePago)

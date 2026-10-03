@@ -30,10 +30,13 @@ namespace Servicios
                     </div>
                 </div>";
 
-            string from = "libreriascriptum.notificaciones@gmail.com";
+            // Credenciales SMTP desde configuración (appsettings.local.json), nunca en el código.
+            using var client = ConfiguracionSmtp.CrearCliente(out string from, out _);
+            if (client == null)
+                return false;
             try
             {
-                MailMessage mail = new MailMessage();
+                using MailMessage mail = new MailMessage();
                 mail.From = new MailAddress(from);
                 mail.To.Add(usuario.USU_Mail);
 
@@ -41,11 +44,6 @@ namespace Servicios
                 mail.Body = Body;
                 mail.IsBodyHtml = true;
 
-                SmtpClient client = new SmtpClient("smtp.gmail.com");
-                client.Port = 587;
-                client.EnableSsl = true;
-                client.UseDefaultCredentials = false;
-                client.Credentials = new NetworkCredential(from, "tboo mkvp vbfa txmc");
                 client.Send(mail);
             }
             catch (Exception)

@@ -1,4 +1,4 @@
-﻿namespace Vista
+namespace Vista
 {
     partial class FrmOrdenReposicion
     {
@@ -28,339 +28,564 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FrmOrdenReposicion));
-            dgvLibrosBajoStock = new DataGridView();
-            dgvProveedores = new DataGridView();
-            panelSuperior = new Panel();
-            pbLogo = new PictureBox();
-            btnCancelar = new Button();
-            lblTituloLibro = new Label();
-            lblTituloProveedor = new Label();
-            btnSeleccionarProveedor = new Button();
-            lblLibro = new Label();
-            lblProveedor = new Label();
-            lblCantidad = new Label();
+            panelCabecera = new Panel();
+            lblNumero = new Label();
+            lblEstadoOrden = new Label();
+            lblFecha = new Label();
+            lblUsuario = new Label();
+            lblProveedorTitulo = new Label();
+            cbProveedor = new ComboBox();
+            lblContacto = new Label();
+            panelCarga = new Panel();
+            lblBuscarTitulo = new Label();
+            txtBuscar = new TextBox();
+            lblCantidadTitulo = new Label();
             numCantidad = new NumericUpDown();
-            lblLibroSeleccionado = new Label();
-            lblProveedorSeleccionado = new Label();
-            btnSeleccionarLibro = new Button();
-            lblPrecioNumero = new Label();
-            lblPrecio = new Label();
-            btnGenerarOrden = new Button();
-            btnReiniciarLyP = new Button();
-            dgvOrdenesReposicion = new DataGridView();
-            lblTituloOrden = new Label();
+            lblCostoTitulo = new Label();
+            numCosto = new NumericUpDown();
+            btnAgregar = new Button();
+            chkSoloProveedor = new CheckBox();
             lblSeleccion = new Label();
-            lblNoHayOrdenes = new Label();
-            ((System.ComponentModel.ISupportInitialize)dgvLibrosBajoStock).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)dgvProveedores).BeginInit();
-            panelSuperior.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pbLogo).BeginInit();
+            dgvItems = new DataGridView();
+            colLibroId = new DataGridViewTextBoxColumn();
+            colCodigo = new DataGridViewTextBoxColumn();
+            colTitulo = new DataGridViewTextBoxColumn();
+            colStock = new DataGridViewTextBoxColumn();
+            colOptimo = new DataGridViewTextBoxColumn();
+            colCantidad = new DataGridViewTextBoxColumn();
+            colCosto = new DataGridViewTextBoxColumn();
+            colSubtotal = new DataGridViewTextBoxColumn();
+            colRecibido = new DataGridViewTextBoxColumn();
+            colCostoRecibido = new DataGridViewTextBoxColumn();
+            colQuitar = new DataGridViewButtonColumn();
+            panelPie = new Panel();
+            lblObservacionesTitulo = new Label();
+            txtObservaciones = new TextBox();
+            lblInfoEstado = new Label();
+            chkActualizarCostos = new CheckBox();
+            lblTotalTitulo = new Label();
+            lblTotal = new Label();
+            btnGuardar = new Button();
+            btnEmitir = new Button();
+            btnRecibir = new Button();
+            btnCerrar = new Button();
+            lstSugerencias = new ListBox();
+            panelCabecera.SuspendLayout();
+            panelCarga.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numCantidad).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)dgvOrdenesReposicion).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numCosto).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvItems).BeginInit();
+            panelPie.SuspendLayout();
             SuspendLayout();
-            // 
-            // dgvLibrosBajoStock
-            // 
-            dgvLibrosBajoStock.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvLibrosBajoStock.BackgroundColor = SystemColors.MenuBar;
-            dgvLibrosBajoStock.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvLibrosBajoStock.Location = new Point(12, 118);
-            dgvLibrosBajoStock.Name = "dgvLibrosBajoStock";
-            dgvLibrosBajoStock.ReadOnly = true;
-            dgvLibrosBajoStock.RowHeadersWidth = 51;
-            dgvLibrosBajoStock.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvLibrosBajoStock.Size = new Size(427, 216);
-            dgvLibrosBajoStock.TabIndex = 5;
-            // 
-            // dgvProveedores
-            // 
-            dgvProveedores.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvProveedores.BackgroundColor = SystemColors.MenuBar;
-            dgvProveedores.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvProveedores.Location = new Point(538, 118);
-            dgvProveedores.Name = "dgvProveedores";
-            dgvProveedores.ReadOnly = true;
-            dgvProveedores.RowHeadersWidth = 51;
-            dgvProveedores.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvProveedores.Size = new Size(416, 216);
-            dgvProveedores.TabIndex = 6;
-            // 
-            // panelSuperior
-            // 
-            panelSuperior.BackColor = SystemColors.Control;
-            panelSuperior.Controls.Add(pbLogo);
-            panelSuperior.Controls.Add(btnCancelar);
-            panelSuperior.Dock = DockStyle.Top;
-            panelSuperior.Location = new Point(0, 0);
-            panelSuperior.Name = "panelSuperior";
-            panelSuperior.Size = new Size(1017, 61);
-            panelSuperior.TabIndex = 12;
-            // 
-            // pbLogo
-            // 
-            pbLogo.Image = (Image)resources.GetObject("pbLogo.Image");
-            pbLogo.Location = new Point(0, -1);
-            pbLogo.Name = "pbLogo";
-            pbLogo.Size = new Size(125, 62);
-            pbLogo.SizeMode = PictureBoxSizeMode.Zoom;
-            pbLogo.TabIndex = 10;
-            pbLogo.TabStop = false;
-            // 
-            // btnCancelar
-            // 
-            btnCancelar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnCancelar.Location = new Point(911, 12);
-            btnCancelar.Name = "btnCancelar";
-            btnCancelar.Size = new Size(94, 29);
-            btnCancelar.TabIndex = 8;
-            btnCancelar.Text = "Cancelar";
-            btnCancelar.UseVisualStyleBackColor = true;
-            btnCancelar.Click += btnCancelar_Click;
-            // 
-            // lblTituloLibro
-            // 
-            lblTituloLibro.AutoSize = true;
-            lblTituloLibro.Font = new Font("Segoe UI", 13.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblTituloLibro.Location = new Point(158, 67);
-            lblTituloLibro.Name = "lblTituloLibro";
-            lblTituloLibro.Size = new Size(93, 31);
-            lblTituloLibro.TabIndex = 13;
-            lblTituloLibro.Text = "LIBROS";
-            // 
-            // lblTituloProveedor
-            // 
-            lblTituloProveedor.AutoSize = true;
-            lblTituloProveedor.Font = new Font("Segoe UI", 13.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblTituloProveedor.Location = new Point(657, 67);
-            lblTituloProveedor.Name = "lblTituloProveedor";
-            lblTituloProveedor.Size = new Size(173, 31);
-            lblTituloProveedor.TabIndex = 14;
-            lblTituloProveedor.Text = "PROVEEDORES";
-            // 
-            // btnSeleccionarProveedor
-            // 
-            btnSeleccionarProveedor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnSeleccionarProveedor.Location = new Point(649, 340);
-            btnSeleccionarProveedor.Name = "btnSeleccionarProveedor";
-            btnSeleccionarProveedor.Size = new Size(219, 47);
-            btnSeleccionarProveedor.TabIndex = 11;
-            btnSeleccionarProveedor.Text = "Seleccionar Proveedor";
-            btnSeleccionarProveedor.UseVisualStyleBackColor = true;
-            btnSeleccionarProveedor.Click += btnSeleccionarLyP_Click;
-            // 
-            // lblLibro
-            // 
-            lblLibro.AutoSize = true;
-            lblLibro.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblLibro.Location = new Point(328, 501);
-            lblLibro.Name = "lblLibro";
-            lblLibro.Size = new Size(49, 20);
-            lblLibro.TabIndex = 15;
-            lblLibro.Text = "Libro:";
-            // 
-            // lblProveedor
-            // 
-            lblProveedor.AutoSize = true;
-            lblProveedor.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblProveedor.Location = new Point(557, 501);
-            lblProveedor.Name = "lblProveedor";
-            lblProveedor.Size = new Size(86, 20);
-            lblProveedor.TabIndex = 16;
-            lblProveedor.Text = "Proveedor:";
-            // 
-            // lblCantidad
-            // 
-            lblCantidad.AutoSize = true;
-            lblCantidad.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblCantidad.Location = new Point(557, 545);
-            lblCantidad.Name = "lblCantidad";
-            lblCantidad.Size = new Size(75, 20);
-            lblCantidad.TabIndex = 17;
-            lblCantidad.Text = "Cantidad:";
-            // 
+            //
+            // panelCabecera
+            //
+            panelCabecera.Controls.Add(lblNumero);
+            panelCabecera.Controls.Add(lblEstadoOrden);
+            panelCabecera.Controls.Add(lblFecha);
+            panelCabecera.Controls.Add(lblUsuario);
+            panelCabecera.Controls.Add(lblProveedorTitulo);
+            panelCabecera.Controls.Add(cbProveedor);
+            panelCabecera.Controls.Add(lblContacto);
+            panelCabecera.Dock = DockStyle.Top;
+            panelCabecera.Location = new Point(0, 0);
+            panelCabecera.Name = "panelCabecera";
+            panelCabecera.Size = new Size(1200, 116);
+            panelCabecera.TabIndex = 0;
+            //
+            // lblNumero
+            //
+            lblNumero.AutoSize = true;
+            lblNumero.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
+            lblNumero.Location = new Point(12, 8);
+            lblNumero.Name = "lblNumero";
+            lblNumero.Size = new Size(335, 37);
+            lblNumero.TabIndex = 0;
+            lblNumero.Tag = "BLANCO";
+            lblNumero.Text = "Nueva orden de reposición";
+            //
+            // lblEstadoOrden
+            //
+            lblEstadoOrden.AutoSize = true;
+            lblEstadoOrden.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblEstadoOrden.Location = new Point(14, 52);
+            lblEstadoOrden.Name = "lblEstadoOrden";
+            lblEstadoOrden.Size = new Size(64, 23);
+            lblEstadoOrden.TabIndex = 1;
+            lblEstadoOrden.Tag = "BLANCO";
+            lblEstadoOrden.Text = "Estado:";
+            //
+            // lblFecha
+            //
+            lblFecha.AutoSize = true;
+            lblFecha.Location = new Point(14, 84);
+            lblFecha.Name = "lblFecha";
+            lblFecha.Size = new Size(50, 20);
+            lblFecha.TabIndex = 2;
+            lblFecha.Tag = "BLANCO";
+            lblFecha.Text = "Fecha:";
+            //
+            // lblUsuario
+            //
+            lblUsuario.AutoSize = true;
+            lblUsuario.Location = new Point(250, 84);
+            lblUsuario.Name = "lblUsuario";
+            lblUsuario.Size = new Size(85, 20);
+            lblUsuario.TabIndex = 3;
+            lblUsuario.Tag = "BLANCO";
+            lblUsuario.Text = "Solicitante:";
+            //
+            // lblProveedorTitulo
+            //
+            lblProveedorTitulo.AutoSize = true;
+            lblProveedorTitulo.Location = new Point(560, 8);
+            lblProveedorTitulo.Name = "lblProveedorTitulo";
+            lblProveedorTitulo.Size = new Size(77, 20);
+            lblProveedorTitulo.TabIndex = 4;
+            lblProveedorTitulo.Tag = "BLANCO";
+            lblProveedorTitulo.Text = "Proveedor";
+            //
+            // cbProveedor
+            //
+            cbProveedor.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbProveedor.Font = new Font("Segoe UI", 11F);
+            cbProveedor.Location = new Point(560, 32);
+            cbProveedor.Name = "cbProveedor";
+            cbProveedor.Size = new Size(380, 33);
+            cbProveedor.TabIndex = 0;
+            //
+            // lblContacto
+            //
+            lblContacto.AutoEllipsis = true;
+            lblContacto.Location = new Point(560, 72);
+            lblContacto.Name = "lblContacto";
+            lblContacto.Size = new Size(628, 40);
+            lblContacto.TabIndex = 6;
+            lblContacto.Tag = "BLANCO";
+            //
+            // panelCarga
+            //
+            panelCarga.Controls.Add(lblBuscarTitulo);
+            panelCarga.Controls.Add(txtBuscar);
+            panelCarga.Controls.Add(lblCantidadTitulo);
+            panelCarga.Controls.Add(numCantidad);
+            panelCarga.Controls.Add(lblCostoTitulo);
+            panelCarga.Controls.Add(numCosto);
+            panelCarga.Controls.Add(btnAgregar);
+            panelCarga.Controls.Add(chkSoloProveedor);
+            panelCarga.Controls.Add(lblSeleccion);
+            panelCarga.Dock = DockStyle.Top;
+            panelCarga.Location = new Point(0, 116);
+            panelCarga.Name = "panelCarga";
+            panelCarga.Size = new Size(1200, 96);
+            panelCarga.TabIndex = 1;
+            //
+            // lblBuscarTitulo
+            //
+            lblBuscarTitulo.AutoSize = true;
+            lblBuscarTitulo.Location = new Point(12, 6);
+            lblBuscarTitulo.Name = "lblBuscarTitulo";
+            lblBuscarTitulo.Size = new Size(312, 20);
+            lblBuscarTitulo.TabIndex = 0;
+            lblBuscarTitulo.Tag = "BLANCO";
+            lblBuscarTitulo.Text = "Agregar libro: ISBN, título, autor o editorial";
+            //
+            // txtBuscar
+            //
+            txtBuscar.Font = new Font("Segoe UI", 11F);
+            txtBuscar.Location = new Point(12, 30);
+            txtBuscar.Name = "txtBuscar";
+            txtBuscar.Size = new Size(480, 32);
+            txtBuscar.TabIndex = 0;
+            //
+            // lblCantidadTitulo
+            //
+            lblCantidadTitulo.AutoSize = true;
+            lblCantidadTitulo.Location = new Point(504, 6);
+            lblCantidadTitulo.Name = "lblCantidadTitulo";
+            lblCantidadTitulo.Size = new Size(69, 20);
+            lblCantidadTitulo.TabIndex = 2;
+            lblCantidadTitulo.Tag = "BLANCO";
+            lblCantidadTitulo.Text = "Cantidad";
+            //
             // numCantidad
-            // 
-            numCantidad.Location = new Point(661, 538);
+            //
+            numCantidad.Font = new Font("Segoe UI", 11F);
+            numCantidad.Location = new Point(504, 30);
+            numCantidad.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+            numCantidad.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             numCantidad.Name = "numCantidad";
-            numCantidad.Size = new Size(150, 27);
-            numCantidad.TabIndex = 18;
-            // 
-            // lblLibroSeleccionado
-            // 
-            lblLibroSeleccionado.AutoSize = true;
-            lblLibroSeleccionado.Location = new Point(389, 501);
-            lblLibroSeleccionado.Name = "lblLibroSeleccionado";
-            lblLibroSeleccionado.Size = new Size(149, 20);
-            lblLibroSeleccionado.TabIndex = 19;
-            lblLibroSeleccionado.Text = "lblLibroSeleccionado";
-            // 
-            // lblProveedorSeleccionado
-            // 
-            lblProveedorSeleccionado.AutoSize = true;
-            lblProveedorSeleccionado.Location = new Point(661, 501);
-            lblProveedorSeleccionado.Name = "lblProveedorSeleccionado";
-            lblProveedorSeleccionado.Size = new Size(166, 20);
-            lblProveedorSeleccionado.TabIndex = 20;
-            lblProveedorSeleccionado.Text = "ProveedorSeleccionado";
-            // 
-            // btnSeleccionarLibro
-            // 
-            btnSeleccionarLibro.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnSeleccionarLibro.Location = new Point(118, 340);
-            btnSeleccionarLibro.Name = "btnSeleccionarLibro";
-            btnSeleccionarLibro.Size = new Size(201, 47);
-            btnSeleccionarLibro.TabIndex = 21;
-            btnSeleccionarLibro.Text = "Seleccionar Libro";
-            btnSeleccionarLibro.UseVisualStyleBackColor = true;
-            btnSeleccionarLibro.Click += btnSeleccionarLibro_Click;
-            // 
-            // lblPrecioNumero
-            // 
-            lblPrecioNumero.AutoSize = true;
-            lblPrecioNumero.Location = new Point(398, 545);
-            lblPrecioNumero.Name = "lblPrecioNumero";
-            lblPrecioNumero.Size = new Size(65, 20);
-            lblPrecioNumero.TabIndex = 23;
-            lblPrecioNumero.Text = "4434343";
-            // 
-            // lblPrecio
-            // 
-            lblPrecio.AutoSize = true;
-            lblPrecio.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblPrecio.Location = new Point(328, 545);
-            lblPrecio.Name = "lblPrecio";
-            lblPrecio.Size = new Size(56, 20);
-            lblPrecio.TabIndex = 22;
-            lblPrecio.Text = "Precio:";
-            // 
-            // btnGenerarOrden
-            // 
-            btnGenerarOrden.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnGenerarOrden.Location = new Point(405, 598);
-            btnGenerarOrden.Name = "btnGenerarOrden";
-            btnGenerarOrden.Size = new Size(261, 47);
-            btnGenerarOrden.TabIndex = 24;
-            btnGenerarOrden.Text = "Generar orden de reposición";
-            btnGenerarOrden.UseVisualStyleBackColor = true;
-            btnGenerarOrden.Click += btnGenerarOrden_Click;
-            // 
-            // btnReiniciarLyP
-            // 
-            btnReiniciarLyP.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnReiniciarLyP.Location = new Point(380, 409);
-            btnReiniciarLyP.Name = "btnReiniciarLyP";
-            btnReiniciarLyP.Size = new Size(261, 47);
-            btnReiniciarLyP.TabIndex = 25;
-            btnReiniciarLyP.Text = "Reiniciar Libros y Proveedores";
-            btnReiniciarLyP.UseVisualStyleBackColor = true;
-            btnReiniciarLyP.Click += btnReiniciarLyP_Click;
-            // 
-            // dgvOrdenesReposicion
-            // 
-            dgvOrdenesReposicion.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvOrdenesReposicion.BackgroundColor = SystemColors.MenuBar;
-            dgvOrdenesReposicion.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvOrdenesReposicion.Location = new Point(24, 707);
-            dgvOrdenesReposicion.Name = "dgvOrdenesReposicion";
-            dgvOrdenesReposicion.ReadOnly = true;
-            dgvOrdenesReposicion.RowHeadersWidth = 51;
-            dgvOrdenesReposicion.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvOrdenesReposicion.Size = new Size(942, 231);
-            dgvOrdenesReposicion.TabIndex = 26;
-            // 
-            // lblTituloOrden
-            // 
-            lblTituloOrden.AutoSize = true;
-            lblTituloOrden.Font = new Font("Segoe UI", 13.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblTituloOrden.Location = new Point(364, 662);
-            lblTituloOrden.Name = "lblTituloOrden";
-            lblTituloOrden.Size = new Size(293, 31);
-            lblTituloOrden.TabIndex = 27;
-            lblTituloOrden.Text = "ORDENES DE REPOSICION";
-            // 
+            numCantidad.Size = new Size(90, 32);
+            numCantidad.TabIndex = 1;
+            numCantidad.TextAlign = HorizontalAlignment.Right;
+            numCantidad.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            //
+            // lblCostoTitulo
+            //
+            lblCostoTitulo.AutoSize = true;
+            lblCostoTitulo.Location = new Point(604, 6);
+            lblCostoTitulo.Name = "lblCostoTitulo";
+            lblCostoTitulo.Size = new Size(84, 20);
+            lblCostoTitulo.TabIndex = 4;
+            lblCostoTitulo.Tag = "BLANCO";
+            lblCostoTitulo.Text = "Costo unit.";
+            //
+            // numCosto
+            //
+            numCosto.DecimalPlaces = 2;
+            numCosto.Font = new Font("Segoe UI", 11F);
+            numCosto.Location = new Point(604, 30);
+            numCosto.Maximum = new decimal(new int[] { 100000000, 0, 0, 0 });
+            numCosto.Name = "numCosto";
+            numCosto.Size = new Size(130, 32);
+            numCosto.TabIndex = 2;
+            numCosto.TextAlign = HorizontalAlignment.Right;
+            numCosto.ThousandsSeparator = true;
+            //
+            // btnAgregar
+            //
+            btnAgregar.Location = new Point(744, 27);
+            btnAgregar.Name = "btnAgregar";
+            btnAgregar.Size = new Size(140, 38);
+            btnAgregar.TabIndex = 3;
+            btnAgregar.Text = "Agregar (Enter)";
+            btnAgregar.UseVisualStyleBackColor = true;
+            //
+            // chkSoloProveedor
+            //
+            chkSoloProveedor.AutoSize = true;
+            chkSoloProveedor.Location = new Point(898, 34);
+            chkSoloProveedor.Name = "chkSoloProveedor";
+            chkSoloProveedor.Size = new Size(234, 24);
+            chkSoloProveedor.TabIndex = 4;
+            chkSoloProveedor.Text = "Sólo libros de este proveedor";
+            chkSoloProveedor.UseVisualStyleBackColor = true;
+            //
             // lblSeleccion
-            // 
-            lblSeleccion.AutoSize = true;
-            lblSeleccion.Font = new Font("Segoe UI", 13.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblSeleccion.Location = new Point(36, 516);
+            //
+            lblSeleccion.AutoEllipsis = true;
+            lblSeleccion.Location = new Point(12, 68);
             lblSeleccion.Name = "lblSeleccion";
-            lblSeleccion.Size = new Size(269, 31);
-            lblSeleccion.TabIndex = 28;
-            lblSeleccion.Text = "SELECCIÓN REALIZADA:";
-            // 
-            // lblNoHayOrdenes
-            // 
-            lblNoHayOrdenes.AutoSize = true;
-            lblNoHayOrdenes.Font = new Font("Segoe UI Semibold", 13.8F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
-            lblNoHayOrdenes.Location = new Point(376, 779);
-            lblNoHayOrdenes.Name = "lblNoHayOrdenes";
-            lblNoHayOrdenes.Size = new Size(256, 31);
-            lblNoHayOrdenes.TabIndex = 29;
-            lblNoHayOrdenes.Text = "No hay ordenes activas";
-            // 
+            lblSeleccion.Size = new Size(1170, 24);
+            lblSeleccion.TabIndex = 8;
+            lblSeleccion.Tag = "BLANCO";
+            //
+            // dgvItems
+            //
+            dgvItems.AllowUserToAddRows = false;
+            dgvItems.AllowUserToDeleteRows = false;
+            dgvItems.AllowUserToResizeRows = false;
+            dgvItems.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvItems.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvItems.Columns.AddRange(new DataGridViewColumn[] { colLibroId, colCodigo, colTitulo, colStock, colOptimo, colCantidad, colCosto, colSubtotal, colRecibido, colCostoRecibido, colQuitar });
+            dgvItems.Dock = DockStyle.Fill;
+            dgvItems.Location = new Point(0, 212);
+            dgvItems.MultiSelect = false;
+            dgvItems.Name = "dgvItems";
+            dgvItems.RowHeadersVisible = false;
+            dgvItems.RowHeadersWidth = 51;
+            dgvItems.RowTemplate.Height = 30;
+            dgvItems.SelectionMode = DataGridViewSelectionMode.CellSelect;
+            dgvItems.Size = new Size(1200, 378);
+            dgvItems.TabIndex = 2;
+            //
+            // colLibroId
+            //
+            colLibroId.DataPropertyName = "LibroId";
+            colLibroId.FillWeight = 40F;
+            colLibroId.HeaderText = "ID";
+            colLibroId.MinimumWidth = 6;
+            colLibroId.Name = "colLibroId";
+            colLibroId.ReadOnly = true;
+            //
+            // colCodigo
+            //
+            colCodigo.DataPropertyName = "Codigo";
+            colCodigo.FillWeight = 90F;
+            colCodigo.HeaderText = "Código / ISBN";
+            colCodigo.MinimumWidth = 6;
+            colCodigo.Name = "colCodigo";
+            colCodigo.ReadOnly = true;
+            //
+            // colTitulo
+            //
+            colTitulo.DataPropertyName = "Titulo";
+            colTitulo.FillWeight = 220F;
+            colTitulo.HeaderText = "Libro";
+            colTitulo.MinimumWidth = 6;
+            colTitulo.Name = "colTitulo";
+            colTitulo.ReadOnly = true;
+            //
+            // colStock
+            //
+            colStock.DataPropertyName = "StockActual";
+            colStock.FillWeight = 55F;
+            colStock.HeaderText = "Stock actual";
+            colStock.MinimumWidth = 6;
+            colStock.Name = "colStock";
+            colStock.ReadOnly = true;
+            //
+            // colOptimo
+            //
+            colOptimo.DataPropertyName = "StockOptimo";
+            colOptimo.FillWeight = 55F;
+            colOptimo.HeaderText = "Óptimo";
+            colOptimo.MinimumWidth = 6;
+            colOptimo.Name = "colOptimo";
+            colOptimo.ReadOnly = true;
+            //
+            // colCantidad
+            //
+            colCantidad.DataPropertyName = "CantidadPedida";
+            colCantidad.FillWeight = 65F;
+            colCantidad.HeaderText = "A pedir";
+            colCantidad.MinimumWidth = 6;
+            colCantidad.Name = "colCantidad";
+            //
+            // colCosto
+            //
+            colCosto.DataPropertyName = "CostoUnitario";
+            colCosto.FillWeight = 75F;
+            colCosto.HeaderText = "Costo unit.";
+            colCosto.MinimumWidth = 6;
+            colCosto.Name = "colCosto";
+            //
+            // colSubtotal
+            //
+            colSubtotal.DataPropertyName = "Subtotal";
+            colSubtotal.FillWeight = 85F;
+            colSubtotal.HeaderText = "Subtotal";
+            colSubtotal.MinimumWidth = 6;
+            colSubtotal.Name = "colSubtotal";
+            colSubtotal.ReadOnly = true;
+            //
+            // colRecibido
+            //
+            colRecibido.DataPropertyName = "CantidadRecibida";
+            colRecibido.FillWeight = 65F;
+            colRecibido.HeaderText = "Recibido";
+            colRecibido.MinimumWidth = 6;
+            colRecibido.Name = "colRecibido";
+            colRecibido.Visible = false;
+            //
+            // colCostoRecibido
+            //
+            colCostoRecibido.DataPropertyName = "CostoRecibido";
+            colCostoRecibido.FillWeight = 75F;
+            colCostoRecibido.HeaderText = "Costo real";
+            colCostoRecibido.MinimumWidth = 6;
+            colCostoRecibido.Name = "colCostoRecibido";
+            colCostoRecibido.Visible = false;
+            //
+            // colQuitar
+            //
+            colQuitar.FillWeight = 45F;
+            colQuitar.HeaderText = "";
+            colQuitar.MinimumWidth = 6;
+            colQuitar.Name = "colQuitar";
+            colQuitar.Text = "Quitar";
+            colQuitar.ToolTipText = "Quitar el ítem (Supr)";
+            colQuitar.UseColumnTextForButtonValue = true;
+            //
+            // panelPie
+            //
+            panelPie.Controls.Add(lblObservacionesTitulo);
+            panelPie.Controls.Add(txtObservaciones);
+            panelPie.Controls.Add(lblInfoEstado);
+            panelPie.Controls.Add(chkActualizarCostos);
+            panelPie.Controls.Add(lblTotalTitulo);
+            panelPie.Controls.Add(lblTotal);
+            panelPie.Controls.Add(btnGuardar);
+            panelPie.Controls.Add(btnEmitir);
+            panelPie.Controls.Add(btnRecibir);
+            panelPie.Controls.Add(btnCerrar);
+            panelPie.Dock = DockStyle.Bottom;
+            panelPie.Location = new Point(0, 590);
+            panelPie.Name = "panelPie";
+            panelPie.Size = new Size(1200, 170);
+            panelPie.TabIndex = 3;
+            //
+            // lblObservacionesTitulo
+            //
+            lblObservacionesTitulo.AutoSize = true;
+            lblObservacionesTitulo.Location = new Point(12, 6);
+            lblObservacionesTitulo.Name = "lblObservacionesTitulo";
+            lblObservacionesTitulo.Size = new Size(296, 20);
+            lblObservacionesTitulo.TabIndex = 0;
+            lblObservacionesTitulo.Tag = "BLANCO";
+            lblObservacionesTitulo.Text = "Observaciones / condiciones de entrega";
+            //
+            // txtObservaciones
+            //
+            txtObservaciones.Location = new Point(12, 30);
+            txtObservaciones.MaxLength = 500;
+            txtObservaciones.Multiline = true;
+            txtObservaciones.Name = "txtObservaciones";
+            txtObservaciones.ScrollBars = ScrollBars.Vertical;
+            txtObservaciones.Size = new Size(560, 80);
+            txtObservaciones.TabIndex = 0;
+            //
+            // lblInfoEstado
+            //
+            lblInfoEstado.AutoEllipsis = true;
+            lblInfoEstado.Location = new Point(12, 120);
+            lblInfoEstado.Name = "lblInfoEstado";
+            lblInfoEstado.Size = new Size(560, 44);
+            lblInfoEstado.TabIndex = 2;
+            lblInfoEstado.Tag = "BLANCO";
+            //
+            // chkActualizarCostos
+            //
+            chkActualizarCostos.AutoSize = true;
+            chkActualizarCostos.Checked = true;
+            chkActualizarCostos.CheckState = CheckState.Checked;
+            chkActualizarCostos.Location = new Point(590, 76);
+            chkActualizarCostos.Name = "chkActualizarCostos";
+            chkActualizarCostos.Size = new Size(419, 24);
+            chkActualizarCostos.TabIndex = 1;
+            chkActualizarCostos.Text = "Actualizar el costo del libro y el precio del proveedor si varió";
+            chkActualizarCostos.UseVisualStyleBackColor = true;
+            chkActualizarCostos.Visible = false;
+            //
+            // lblTotalTitulo
+            //
+            lblTotalTitulo.AutoSize = true;
+            lblTotalTitulo.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            lblTotalTitulo.Location = new Point(590, 22);
+            lblTotalTitulo.Name = "lblTotalTitulo";
+            lblTotalTitulo.Size = new Size(144, 28);
+            lblTotalTitulo.TabIndex = 4;
+            lblTotalTitulo.Tag = "BLANCO";
+            lblTotalTitulo.Text = "Total estimado";
+            //
+            // lblTotal
+            //
+            lblTotal.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+            lblTotal.Location = new Point(860, 12);
+            lblTotal.Name = "lblTotal";
+            lblTotal.Size = new Size(328, 46);
+            lblTotal.TabIndex = 5;
+            lblTotal.Tag = "BLANCO";
+            lblTotal.Text = "$0,00";
+            lblTotal.TextAlign = ContentAlignment.MiddleRight;
+            //
+            // btnGuardar
+            //
+            btnGuardar.Location = new Point(590, 116);
+            btnGuardar.Name = "btnGuardar";
+            btnGuardar.Size = new Size(150, 46);
+            btnGuardar.TabIndex = 2;
+            btnGuardar.Text = "Guardar borrador";
+            btnGuardar.UseVisualStyleBackColor = true;
+            //
+            // btnEmitir
+            //
+            btnEmitir.Location = new Point(746, 116);
+            btnEmitir.Name = "btnEmitir";
+            btnEmitir.Size = new Size(150, 46);
+            btnEmitir.TabIndex = 3;
+            btnEmitir.Text = "Emitir al proveedor";
+            btnEmitir.UseVisualStyleBackColor = true;
+            //
+            // btnRecibir
+            //
+            btnRecibir.Location = new Point(902, 116);
+            btnRecibir.Name = "btnRecibir";
+            btnRecibir.Size = new Size(170, 46);
+            btnRecibir.TabIndex = 4;
+            btnRecibir.Text = "Registrar recepción";
+            btnRecibir.UseVisualStyleBackColor = true;
+            //
+            // btnCerrar
+            //
+            btnCerrar.Location = new Point(1078, 116);
+            btnCerrar.Name = "btnCerrar";
+            btnCerrar.Size = new Size(110, 46);
+            btnCerrar.TabIndex = 5;
+            btnCerrar.Text = "Cerrar";
+            btnCerrar.UseVisualStyleBackColor = true;
+            //
+            // lstSugerencias
+            //
+            lstSugerencias.Font = new Font("Segoe UI", 10F);
+            lstSugerencias.IntegralHeight = false;
+            lstSugerencias.Location = new Point(12, 180);
+            lstSugerencias.Name = "lstSugerencias";
+            lstSugerencias.Size = new Size(760, 32);
+            lstSugerencias.TabIndex = 9;
+            lstSugerencias.TabStop = false;
+            lstSugerencias.Visible = false;
+            //
             // FrmOrdenReposicion
-            // 
+            //
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1017, 970);
-            Controls.Add(lblSeleccion);
-            Controls.Add(lblTituloOrden);
-            Controls.Add(dgvOrdenesReposicion);
-            Controls.Add(btnReiniciarLyP);
-            Controls.Add(btnGenerarOrden);
-            Controls.Add(lblPrecioNumero);
-            Controls.Add(lblPrecio);
-            Controls.Add(btnSeleccionarLibro);
-            Controls.Add(lblProveedorSeleccionado);
-            Controls.Add(lblLibroSeleccionado);
-            Controls.Add(numCantidad);
-            Controls.Add(lblCantidad);
-            Controls.Add(lblProveedor);
-            Controls.Add(lblLibro);
-            Controls.Add(btnSeleccionarProveedor);
-            Controls.Add(lblTituloProveedor);
-            Controls.Add(lblTituloLibro);
-            Controls.Add(panelSuperior);
-            Controls.Add(dgvProveedores);
-            Controls.Add(dgvLibrosBajoStock);
-            Controls.Add(lblNoHayOrdenes);
+            ClientSize = new Size(1200, 760);
+            Controls.Add(lstSugerencias);
+            Controls.Add(dgvItems);
+            Controls.Add(panelPie);
+            Controls.Add(panelCarga);
+            Controls.Add(panelCabecera);
+            MinimumSize = new Size(1100, 700);
             Name = "FrmOrdenReposicion";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Orden de reposición";
             Load += FrmOrdenReposicion_Load;
-            ((System.ComponentModel.ISupportInitialize)dgvLibrosBajoStock).EndInit();
-            ((System.ComponentModel.ISupportInitialize)dgvProveedores).EndInit();
-            panelSuperior.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)pbLogo).EndInit();
+            panelCabecera.ResumeLayout(false);
+            panelCabecera.PerformLayout();
+            panelCarga.ResumeLayout(false);
+            panelCarga.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)numCantidad).EndInit();
-            ((System.ComponentModel.ISupportInitialize)dgvOrdenesReposicion).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numCosto).EndInit();
+            ((System.ComponentModel.ISupportInitialize)dgvItems).EndInit();
+            panelPie.ResumeLayout(false);
+            panelPie.PerformLayout();
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
 
-        private DataGridView dgvLibrosBajoStock;
-        private DataGridView dgvProveedores;
-        private Panel panelSuperior;
-        private PictureBox pbLogo;
-        private Button btnCancelar;
-        private Label lblTituloLibro;
-        private Label lblTituloProveedor;
-        private Button btnSeleccionarProveedor;
-        private Label lblLibro;
-        private Label lblProveedor;
-        private Label lblCantidad;
+        private Panel panelCabecera;
+        private Label lblNumero;
+        private Label lblEstadoOrden;
+        private Label lblFecha;
+        private Label lblUsuario;
+        private Label lblProveedorTitulo;
+        private ComboBox cbProveedor;
+        private Label lblContacto;
+        private Panel panelCarga;
+        private Label lblBuscarTitulo;
+        private TextBox txtBuscar;
+        private Label lblCantidadTitulo;
         private NumericUpDown numCantidad;
-        private Label lblLibroSeleccionado;
-        private Label lblProveedorSeleccionado;
-        private Button btnSeleccionarLibro;
-        private Label lblPrecioNumero;
-        private Label lblPrecio;
-        private Button btnGenerarOrden;
-        private Button btnReiniciarLyP;
-        private DataGridView dgvOrdenesReposicion;
-        private Label lblTituloOrden;
+        private Label lblCostoTitulo;
+        private NumericUpDown numCosto;
+        private Button btnAgregar;
+        private CheckBox chkSoloProveedor;
         private Label lblSeleccion;
-        private Label lblNoHayOrdenes;
+        private DataGridView dgvItems;
+        private DataGridViewTextBoxColumn colLibroId;
+        private DataGridViewTextBoxColumn colCodigo;
+        private DataGridViewTextBoxColumn colTitulo;
+        private DataGridViewTextBoxColumn colStock;
+        private DataGridViewTextBoxColumn colOptimo;
+        private DataGridViewTextBoxColumn colCantidad;
+        private DataGridViewTextBoxColumn colCosto;
+        private DataGridViewTextBoxColumn colSubtotal;
+        private DataGridViewTextBoxColumn colRecibido;
+        private DataGridViewTextBoxColumn colCostoRecibido;
+        private DataGridViewButtonColumn colQuitar;
+        private Panel panelPie;
+        private Label lblObservacionesTitulo;
+        private TextBox txtObservaciones;
+        private Label lblInfoEstado;
+        private CheckBox chkActualizarCostos;
+        private Label lblTotalTitulo;
+        private Label lblTotal;
+        private Button btnGuardar;
+        private Button btnEmitir;
+        private Button btnRecibir;
+        private Button btnCerrar;
+        private ListBox lstSugerencias;
     }
 }

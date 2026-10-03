@@ -93,6 +93,51 @@ namespace Controladora
             }).ToList();
         }
 
+        public const string NombreConsumidorFinal = "Consumidor Final";
+        public const int DniConsumidorFinal = 0;
+
+        /// <summary>
+        /// Devuelve el cliente genérico "Consumidor Final" y lo crea si todavía no existe.
+        /// Se usa cuando la venta no se asigna a un cliente identificado.
+        /// </summary>
+        public async Task<ClienteDTO> ObtenerConsumidorFinalAsync(CancellationToken ct = default)
+        {
+            await using var db = new Libreria();
+            var cliente = await ObtenerOCrearConsumidorFinalAsync(db, ct);
+            return new ClienteDTO
+            {
+                CLIDTO_ID = cliente.CLI_Persona.PER_ID,
+                Nombre = cliente.CLI_Persona.PER_Nombre,
+                DNI = cliente.CLI_Persona.PER_DNI,
+                Email = cliente.CLI_Persona.PER_Mail,
+                Telefono = cliente.CLI_Persona.PER_Telefono,
+            };
+        }
+
+        /// <summary>Variante que trabaja sobre un contexto dado, para usarla dentro de la transacción de la venta.</summary>
+        internal static async Task<Cliente> ObtenerOCrearConsumidorFinalAsync(Libreria db, CancellationToken ct)
+        {
+            var existente = await db.Clientes.Include(c => c.CLI_Persona)
+                .FirstOrDefaultAsync(c => c.CLI_Persona.PER_DNI == DniConsumidorFinal
+                                       && c.CLI_Persona.PER_Nombre == NombreConsumidorFinal, ct);
+            if (existente != null)
+                return existente;
+
+            var nuevo = new Cliente
+            {
+                CLI_Persona = new Persona
+                {
+                    PER_Nombre = NombreConsumidorFinal,
+                    PER_DNI = DniConsumidorFinal,
+                    PER_Mail = "-",
+                    PER_Telefono = "-",
+                },
+            };
+            db.Clientes.Add(nuevo);
+            await db.SaveChangesAsync(ct);
+            return nuevo;
+        }
+
         /// <summary>Versión async con contexto propio y sin tracking, para no bloquear la UI.</summary>
         public async Task<List<ClienteDTO>> ObtenerClientesGridAsync(CancellationToken ct = default)
         {

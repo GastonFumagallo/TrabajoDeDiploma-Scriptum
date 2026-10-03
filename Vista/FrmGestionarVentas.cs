@@ -13,8 +13,9 @@ using System.Windows.Forms;
 namespace Vista
 {
     /// <summary>
-    /// Listado y gestión de ventas: filtros combinables (cliente/DNI, fechas, estado) resueltos en SQL,
-    /// paginación, detalle, ticket (reimpresión), exportación a CSV y anulación con reposición de stock.
+    /// Panel de control y auditoría de ventas: filtros combinables (período, cliente/DNI, comprobante, estado,
+    /// medio de pago) resueltos en SQL, métricas del período, paginación, detalle, reimpresión del comprobante,
+    /// exportación a CSV y anulación con reposición de stock.
     ///
     /// Atajos: Enter o doble clic = ver detalle · F5 = refrescar · Ctrl+RePág/AvPág = cambiar de página.
     /// </summary>
@@ -28,31 +29,28 @@ namespace Vista
         private int paginaActual = 1;
         private int totalPaginas = 1;
         private bool ocupado;
-        private Font? fuenteAnulada;  // se crea una sola vez (crear una Font por celda pierde recursos GDI)
+        private bool inicializando = true;   // evita recargas mientras se arman los combos
+        private Font? fuenteAnulada;         // se crea una sola vez (crear una Font por celda pierde recursos GDI)
 
         // Cada carga cancela la anterior: si el usuario tipea rápido sólo se muestra el último resultado.
         private CancellationTokenSource? ctsCarga;
         private readonly CancellationTokenSource ctsFormulario = new();
 
+        /// <summary>Opción "Todos" del combo de medios de pago.</summary>
+        private static readonly MetodoPago TodosLosMedios = new() { MP_ID = 0, MP_Nombre = "Todos" };
+
         public FrmGestionarVentas()
         {
             InitializeComponent();
-
             ConfigurarGrilla();
+            ConfigurarFiltros();
 
-            cbEstado.Items.AddRange(new object[] { "Todas las ventas", "Sólo vigentes", "Sólo anuladas" });
-            cbEstado.SelectedIndex = 0;
-            cbEstado.SelectedIndexChanged += (_, _) => RecargarDesdePrimeraPagina();
-
-            dtpDesde.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            dtpHasta.Value = DateTime.Today;
-            dtpDesde.ValueChanged += (_, _) => ProgramarRecarga();
-            dtpHasta.ValueChanged += (_, _) => ProgramarRecarga();
-
-            timerFiltro.Tick += (_, _) => { timerFiltro.Stop(); RecargarDesdePrimeraPagina(); };
-
-            btnAnularVenta.Click += btnAnularVenta_Click;
-            btnExportar.Click += btnExportar_Click;
+            btnRealizarVenta.Click += (_, _) => NuevaVenta();
+            btnVerDetalles.Click += (_, _) => VerDetalle();
+            btnVerTicket.Click += async (_, _) => await ReimprimirAsync();
+            btnAnularVenta.Click += async (_, _) => await AnularAsync();
+            btnExportar.Click += async (_, _) => await ExportarAsync();
+            btnSalir.Click += (_, _) => Salir();
             btnPaginaAnterior.Click += (_, _) => CambiarPagina(-1);
             btnPaginaSiguiente.Click += (_, _) => CambiarPagina(+1);
 
@@ -70,20 +68,15 @@ namespace Vista
                 .GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)?
                 .SetValue(dgvVentas, true);
 
-            dgvVentas.AllowUserToAddRows = false;
-            dgvVentas.AllowUserToDeleteRows = false;
-            dgvVentas.MultiSelect = false;
-            dgvVentas.RowHeadersVisible = false;
             dgvVentas.DataSource = bsVentas;
-
             dgvVentas.DataBindingComplete += (_, _) =>
             {
                 Ocultar("VENDTO_ID", "Anulada", "MotivoAnulacion");
+                Configurar("Comprobante", "Comprobante");
                 Configurar("Fecha", "Fecha", "dd/MM/yyyy HH:mm");
-                Configurar("TotalVenta", "Monto total de la venta", "N2");
-                Configurar("MetodoPago", "Método de pago");
-                if (dgvVentas.Columns["TotalVenta"] is DataGridViewColumn total)
-                    total.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                Configurar("MetodoPago", "Medio de pago");
+                Configurar("TotalVenta", "Total", "N2", DataGridViewContentAlignment.MiddleRight);
+                Configurar("Usuario", "Vendedor");
             };
 
             // Las anuladas se ven tachadas y en gris para distinguirlas de un vistazo.
@@ -102,13 +95,13 @@ namespace Vista
             };
 
             dgvVentas.SelectionChanged += (_, _) => ActualizarAcciones();
-            dgvVentas.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) btnVerDetalles_Click(this, EventArgs.Empty); };
+            dgvVentas.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) VerDetalle(); };
             dgvVentas.KeyDown += (_, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
                 {
                     e.SuppressKeyPress = true;
-                    btnVerDetalles_Click(this, EventArgs.Empty);
+                    VerDetalle();
                 }
             };
 
@@ -117,18 +110,68 @@ namespace Vista
                 foreach (var c in columnas)
                     if (dgvVentas.Columns[c] is DataGridViewColumn col) col.Visible = false;
             }
-            void Configurar(string columna, string encabezado, string? formato = null)
+            void Configurar(string columna, string encabezado, string? formato = null,
+                DataGridViewContentAlignment? alineacion = null)
             {
                 if (dgvVentas.Columns[columna] is not DataGridViewColumn col) return;
                 col.HeaderText = encabezado;
                 if (formato != null) col.DefaultCellStyle.Format = formato;
+                if (alineacion is DataGridViewContentAlignment a) col.DefaultCellStyle.Alignment = a;
             }
+        }
+
+        private void ConfigurarFiltros()
+        {
+            cbEstado.Items.AddRange(new object[] { "Todas", "Completadas", "Anuladas" });
+            cbEstado.SelectedIndex = 0;
+
+            // Por defecto, el mes en curso: las métricas tienen sentido sobre un período acotado.
+            dtpDesde.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            dtpHasta.Value = DateTime.Today;
+
+            EventHandler recargaInmediata = (_, _) => RecargarDesdePrimeraPagina();
+            EventHandler recargaDiferida = (_, _) => ProgramarRecarga();
+
+            cbEstado.SelectedIndexChanged += recargaInmediata;
+            cbMetodoPago.SelectedIndexChanged += recargaInmediata;
+            chkFechas.CheckedChanged += (_, _) =>
+            {
+                dtpDesde.Enabled = dtpHasta.Enabled = chkFechas.Checked;
+                RecargarDesdePrimeraPagina();
+            };
+            dtpDesde.ValueChanged += recargaDiferida;
+            dtpHasta.ValueChanged += recargaDiferida;
+            txtFiltrar.TextChanged += recargaDiferida;
+            txtComprobante.TextChanged += recargaDiferida;
+            txtComprobante.KeyPress += (_, e) =>
+            {
+                // Sólo dígitos, guión y las letras de "TK" (acepta "TK-000123").
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && "TtKk-".IndexOf(e.KeyChar) < 0)
+                    e.Handled = true;
+            };
+            btnBorrarFiltros.Click += (_, _) => LimpiarFiltros();
+
+            timerFiltro.Tick += (_, _) => { timerFiltro.Stop(); RecargarDesdePrimeraPagina(); };
         }
 
         private async void FrmGestionarVentas_Load(object sender, EventArgs e)
         {
-            gbFiltrarFecha.Visible = false;
             AplicarSeguridad();
+
+            try
+            {
+                var metodos = await ControladoraMetodosPago.Instancia.ObtenerMetodosPagoAsync(soloActivos: false, ctsFormulario.Token);
+                cbMetodoPago.DataSource = new[] { TodosLosMedios }.Concat(metodos).ToList();
+                cbMetodoPago.DisplayMember = nameof(MetodoPago.MP_Nombre);
+                cbMetodoPago.ValueMember = nameof(MetodoPago.MP_ID);
+            }
+            catch (OperationCanceledException) { return; }
+            catch (Exception ex)
+            {
+                MostrarError("No se pudieron cargar los medios de pago.", ex);
+            }
+
+            inicializando = false;
             await CargarVentasAsync();
         }
 
@@ -145,18 +188,34 @@ namespace Vista
 
         #region Filtros y carga
 
-        private FiltroVentas? ConstruirFiltro()
+        /// <summary>Arma el filtro desde la pantalla. Devuelve null y un motivo si algún criterio es inválido.</summary>
+        private FiltroVentas? ConstruirFiltro(out string? error)
         {
+            error = null;
             var filtro = new FiltroVentas
             {
                 Cliente = txtFiltrar.Text.Trim(),
                 Estado = (EstadoVentaFiltro)Math.Max(0, cbEstado.SelectedIndex),
+                MetodoPagoId = cbMetodoPago.SelectedItem is MetodoPago { MP_ID: > 0 } m ? m.MP_ID : null,
             };
 
-            if (checkFiltrarPorFecha.Checked)
+            if (!string.IsNullOrWhiteSpace(txtComprobante.Text))
+            {
+                filtro.NumeroComprobante = ControladoraVentas.ParsearComprobante(txtComprobante.Text);
+                if (filtro.NumeroComprobante == null)
+                {
+                    error = "El número de comprobante no es válido (ej.: TK-000123 o 123).";
+                    return null;
+                }
+            }
+
+            if (chkFechas.Checked)
             {
                 if (dtpDesde.Value.Date > dtpHasta.Value.Date)
-                    return null;  // rango inválido: no se consulta
+                {
+                    error = "El período es inválido: \"desde\" es posterior a \"hasta\".";
+                    return null;
+                }
                 filtro.Desde = dtpDesde.Value.Date;
                 filtro.Hasta = dtpHasta.Value.Date;
             }
@@ -165,12 +224,15 @@ namespace Vista
 
         private void ProgramarRecarga()
         {
+            if (inicializando) return;
             timerFiltro.Stop();
             timerFiltro.Start();
         }
 
         private async void RecargarDesdePrimeraPagina()
         {
+            if (inicializando) return;
+            timerFiltro.Stop();
             paginaActual = 1;
             await CargarVentasAsync();
         }
@@ -178,18 +240,33 @@ namespace Vista
         private async void CambiarPagina(int delta)
         {
             int nueva = Math.Clamp(paginaActual + delta, 1, totalPaginas);
-            if (nueva == paginaActual) return;
+            if (nueva == paginaActual || ocupado) return;
             paginaActual = nueva;
             await CargarVentasAsync();
+        }
+
+        private void LimpiarFiltros()
+        {
+            inicializando = true;   // un solo refresco al final, no uno por control
+            txtFiltrar.Clear();
+            txtComprobante.Clear();
+            cbEstado.SelectedIndex = 0;
+            if (cbMetodoPago.Items.Count > 0) cbMetodoPago.SelectedIndex = 0;
+            chkFechas.Checked = true;
+            dtpDesde.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            dtpHasta.Value = DateTime.Today;
+            inicializando = false;
+            RecargarDesdePrimeraPagina();
+            txtFiltrar.Focus();
         }
 
         /// <param name="seleccionarVentaId">Si se indica, se re-selecciona esa venta tras recargar (ej. después de anular).</param>
         private async Task CargarVentasAsync(int? seleccionarVentaId = null)
         {
-            var filtro = ConstruirFiltro();
+            var filtro = ConstruirFiltro(out string? error);
             if (filtro == null)
             {
-                lblResumen.Text = "El rango de fechas es inválido: \"Desde\" es posterior a \"Hasta\".";
+                lblResumen.Text = error;
                 return;
             }
 
@@ -206,17 +283,18 @@ namespace Vista
                 totalPaginas = Math.Max(1, (int)Math.Ceiling(pagina.TotalRegistros / (double)TamañoPagina));
                 if (paginaActual > totalPaginas)
                 {
-                    // Puede pasar si cambió el filtro o se anularon ventas con el filtro "sólo vigentes".
+                    // Puede pasar si cambió el filtro o se anularon ventas con el filtro "Completadas".
                     paginaActual = totalPaginas;
                     await CargarVentasAsync(seleccionarVentaId);
                     return;
                 }
 
                 bsVentas.DataSource = pagina.Ventas;
+                MostrarMetricas(pagina.Metricas);
                 lblPagina.Text = $"Página {paginaActual} de {totalPaginas}";
                 lblResumen.Text = pagina.TotalRegistros == 0
                     ? "No se encontraron ventas con los filtros aplicados."
-                    : $"{pagina.TotalRegistros} venta(s) · Total facturado (vigentes): ${pagina.TotalFacturado:N2}";
+                    : $"{pagina.TotalRegistros} venta(s) encontradas.";
 
                 if (seleccionarVentaId is int id)
                     SeleccionarVenta(id);
@@ -239,6 +317,14 @@ namespace Vista
             }
         }
 
+        private void MostrarMetricas(MetricasVentas m)
+        {
+            lblRecaudado.Text = $"${m.TotalRecaudado:N2}";
+            lblCantidad.Text = m.CantidadCompletadas.ToString("N0");
+            lblPromedio.Text = $"${m.TicketPromedio:N2}";
+            lblAnuladas.Text = m.CantidadAnuladas.ToString("N0");
+        }
+
         private void SeleccionarVenta(int ventaId)
         {
             foreach (DataGridViewRow fila in dgvVentas.Rows)
@@ -249,48 +335,6 @@ namespace Vista
                     return;
                 }
             }
-        }
-
-        private void txtFiltrar_TextChanged(object sender, EventArgs e) => ProgramarRecarga();
-
-        private void btnFiltrar_Click(object sender, EventArgs e)
-        {
-            timerFiltro.Stop();
-            RecargarDesdePrimeraPagina();
-        }
-
-        private void btnBorrarFiltros_Click(object sender, EventArgs e)
-        {
-            txtFiltrar.Text = "";
-            cbEstado.SelectedIndex = 0;
-            timerFiltro.Stop();
-            RecargarDesdePrimeraPagina();
-            txtFiltrar.Focus();
-        }
-
-        private void checkFiltrarPorFecha_CheckedChanged(object sender, EventArgs e)
-        {
-            gbFiltrarFecha.Visible = checkFiltrarPorFecha.Checked;
-            RecargarDesdePrimeraPagina();
-        }
-
-        private void btnFiltrarFecha_Click(object sender, EventArgs e)
-        {
-            if (dtpDesde.Value.Date > dtpHasta.Value.Date)
-            {
-                MessageBox.Show("La fecha \"Desde\" no puede ser posterior a la fecha \"Hasta\".", "Rango inválido",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            timerFiltro.Stop();
-            RecargarDesdePrimeraPagina();
-        }
-
-        private void btnBorrarFiltrosFecha_Click(object sender, EventArgs e)
-        {
-            dtpDesde.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            dtpHasta.Value = DateTime.Today;
-            checkFiltrarPorFecha.Checked = false;  // dispara la recarga
         }
 
         #endregion
@@ -312,17 +356,25 @@ namespace Vista
             btnPaginaSiguiente.Enabled = !ocupado && paginaActual < totalPaginas;
         }
 
-        private void btnVerDetalles_Click(object sender, EventArgs e)
+        private void NuevaVenta()
         {
-            if (!btnVerDetalles.Visible || VentaSeleccionada is not VentaDTO venta)
+            if (TopLevelControl is FrmMenu principal)
+                principal.AbrirFormularioPanel(new FrmRealizarVenta());
+        }
+
+        private void VerDetalle()
+        {
+            if (!btnVerDetalles.Visible) return;
+            if (VentaSeleccionada is not VentaDTO venta)
             {
-                if (btnVerDetalles.Visible) AvisarSinSeleccion();
+                AvisarSinSeleccion();
                 return;
             }
 
             try
             {
                 using var detalles = new FrmDetalles();
+                detalles.Text = $"Detalle de {venta.Comprobante} — {venta.Cliente} — {venta.Estado}";
                 detalles.cargarDetalles(new Venta { VEN_ID = venta.VENDTO_ID });
                 detalles.ShowDialog(this);
             }
@@ -332,8 +384,8 @@ namespace Vista
             }
         }
 
-        /// <summary>Muestra el ticket, desde donde se puede reimprimir. Si la venta está anulada, el ticket lo indica.</summary>
-        private async void btnVerTicket_Click(object sender, EventArgs e)
+        /// <summary>Muestra el comprobante, desde donde se reimprime. Si la venta está anulada, el ticket lo indica.</summary>
+        private async Task ReimprimirAsync()
         {
             if (VentaSeleccionada is not VentaDTO venta)
             {
@@ -348,7 +400,7 @@ namespace Vista
                 UseWaitCursor = false;
                 if (ticket == null)
                 {
-                    MessageBox.Show("La venta ya no existe.", "Ticket", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("La venta ya no existe.", "Comprobante", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
                 using var frmTicket = new FrmTickets(ticket);
@@ -357,7 +409,7 @@ namespace Vista
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                MostrarError("No se pudo generar el ticket.", ex);
+                MostrarError("No se pudo generar el comprobante.", ex);
             }
             finally
             {
@@ -365,7 +417,7 @@ namespace Vista
             }
         }
 
-        private async void btnAnularVenta_Click(object? sender, EventArgs e)
+        private async Task AnularAsync()
         {
             if (ocupado) return;
             if (VentaSeleccionada is not VentaDTO venta)
@@ -385,13 +437,14 @@ namespace Vista
 
             // Paso 2: confirmación explícita con las consecuencias, con "No" como opción por defecto.
             var confirmacion = MessageBox.Show(
-                $"Se va a ANULAR la venta N° {venta.VENDTO_ID}:\n\n" +
+                $"Se va a ANULAR la venta {venta.Comprobante}:\n\n" +
                 $"   Cliente: {venta.Cliente}\n" +
                 $"   Fecha: {venta.Fecha:dd/MM/yyyy HH:mm}\n" +
                 $"   Total: ${venta.TotalVenta:N2}\n" +
                 $"   Motivo: {motivo}\n\n" +
                 "• Las unidades vendidas vuelven al stock.\n" +
-                "• La venta deja de contar en los reportes.\n" +
+                "• La venta deja de contar en métricas y reportes.\n" +
+                "• Queda registrado quién la anuló y por qué.\n" +
                 "• Esta acción no se puede deshacer.\n\n" +
                 "¿Confirma la anulación?",
                 "Confirmar anulación", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
@@ -404,7 +457,7 @@ namespace Vista
                 var resultado = await FacadeVentas.Instancia.AnularVentaAsync(venta.VENDTO_ID, motivo, usuario, ctsFormulario.Token);
 
                 if (resultado.Exito)
-                    MessageBox.Show($"La venta N° {venta.VENDTO_ID} fue anulada y el stock fue repuesto.", "Venta anulada",
+                    MessageBox.Show($"La venta {venta.Comprobante} fue anulada y el stock fue repuesto.", "Venta anulada",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 else
                     MessageBox.Show(resultado.Mensaje, "No se pudo anular", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -427,7 +480,7 @@ namespace Vista
         {
             using var dlg = new Form
             {
-                Text = $"Anular venta N° {venta.VENDTO_ID}",
+                Text = $"Anular venta {venta.Comprobante}",
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 StartPosition = FormStartPosition.CenterParent,
                 MinimizeBox = false,
@@ -435,7 +488,7 @@ namespace Vista
                 ClientSize = new Size(460, 210),
                 ShowInTaskbar = false,
             };
-            var lbl = new Label { Text = "Motivo de la anulación (obligatorio):", Location = new Point(12, 12), AutoSize = true };
+            var lbl = new Label { Text = "Motivo de la anulación (obligatorio, mínimo 5 caracteres):", Location = new Point(12, 12), AutoSize = true };
             var txt = new TextBox { Location = new Point(12, 40), Size = new Size(436, 100), Multiline = true, MaxLength = 250 };
             var btnOk = new Button { Text = "Continuar", Location = new Point(262, 160), Size = new Size(90, 34), DialogResult = DialogResult.OK, Enabled = false };
             var btnCancel = new Button { Text = "Cancelar", Location = new Point(358, 160), Size = new Size(90, 34), DialogResult = DialogResult.Cancel };
@@ -448,10 +501,15 @@ namespace Vista
         }
 
         /// <summary>Exporta a CSV todas las ventas que cumplen el filtro actual (no sólo la página visible).</summary>
-        private async void btnExportar_Click(object? sender, EventArgs e)
+        private async Task ExportarAsync()
         {
-            var filtro = ConstruirFiltro();
-            if (ocupado || filtro == null) return;
+            var filtro = ConstruirFiltro(out string? error);
+            if (ocupado) return;
+            if (filtro == null)
+            {
+                MessageBox.Show(error, "Filtros inválidos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             using var dialogo = new SaveFileDialog
             {
@@ -466,18 +524,25 @@ namespace Vista
                 var todas = await ControladoraVentas.Instancia.BuscarVentasAsync(filtro, 1, null, ctsFormulario.Token);
 
                 var sb = new StringBuilder();
-                sb.AppendLine("N° venta;Fecha;Cliente;Método de pago;Total;Estado;Motivo anulación");
+                sb.AppendLine("Comprobante;Fecha;Cliente;Medio de pago;Total;Estado;Vendedor;Motivo anulación");
                 foreach (var v in todas.Ventas)
                 {
                     sb.AppendLine(string.Join(";",
-                        v.VENDTO_ID,
+                        v.Comprobante,
                         v.Fecha.ToString("dd/MM/yyyy HH:mm"),
                         Csv(v.Cliente),
                         Csv(v.MetodoPago),
                         v.TotalVenta.ToString("0.00"),
                         v.Estado,
+                        Csv(v.Usuario),
                         Csv(v.MotivoAnulacion)));
                 }
+                var m = todas.Metricas;
+                sb.AppendLine();
+                sb.AppendLine($"Total recaudado;{m.TotalRecaudado:0.00}");
+                sb.AppendLine($"Ventas completadas;{m.CantidadCompletadas}");
+                sb.AppendLine($"Ticket promedio;{m.TicketPromedio:0.00}");
+                sb.AppendLine($"Ventas anuladas;{m.CantidadAnuladas}");
 
                 // UTF-8 con BOM y separador ';' para que Excel en español lo abra bien con doble clic.
                 await File.WriteAllTextAsync(dialogo.FileName, sb.ToString(), new UTF8Encoding(true), ctsFormulario.Token);
@@ -485,6 +550,10 @@ namespace Vista
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (OperationCanceledException) { }
+            catch (IOException ex)
+            {
+                MostrarError("No se pudo escribir el archivo. ¿Está abierto en Excel?", ex);
+            }
             catch (Exception ex)
             {
                 MostrarError("No se pudo exportar el listado.", ex);
@@ -502,13 +571,7 @@ namespace Vista
 
         #region Navegación y utilidades
 
-        private void btnRealizarVenta_Click(object sender, EventArgs e)
-        {
-            if (TopLevelControl is FrmMenu principal)
-                principal.AbrirFormularioPanel(new FrmRealizarVenta());
-        }
-
-        private void btnSalir_Click(object sender, EventArgs e)
+        private void Salir()
         {
             if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
                 principal.MostrarInicio();
@@ -541,7 +604,7 @@ namespace Vista
         {
             ocupado = valor;
             UseWaitCursor = valor;
-            panelSuperior.Enabled = !valor;
+            panelFiltros.Enabled = !valor;
             dgvVentas.Enabled = !valor;
             ActualizarAcciones();
         }
@@ -550,7 +613,7 @@ namespace Vista
             MessageBox.Show("Seleccioná una venta.", "Sin selección", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void MostrarError(string mensaje, Exception ex) =>
-            MessageBox.Show($"{mensaje}\n\nDetalle: {ex.GetBaseException().Message}", "Error",
+            MessageBox.Show($"{mensaje}\n\nDetalle técnico: {ex.GetBaseException().Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         #endregion

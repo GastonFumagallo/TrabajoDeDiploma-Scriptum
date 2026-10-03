@@ -52,6 +52,8 @@ namespace Vista
             sb.AppendLine($"Fecha: {ticketActual.Fecha:dd/MM/yyyy HH:mm}");
             sb.AppendLine($"Cliente: {ticketActual.Cliente}");
             sb.AppendLine($"Método de Pago: {ticketActual.MetodoPago}");
+            if (!string.IsNullOrEmpty(ticketActual.Usuario))
+                sb.AppendLine($"Atendió: {ticketActual.Usuario}");
 
             sb.AppendLine();
             sb.AppendLine("------------------------------------");
@@ -64,7 +66,11 @@ namespace Vista
             }
 
             sb.AppendLine("------------------------------------");
+            foreach (var linea in LineasDesglose())
+                sb.AppendLine(linea);
             sb.AppendLine($"TOTAL: ${ticketActual.Total:N2}");
+            foreach (var linea in LineasPago())
+                sb.AppendLine(linea);
             sb.AppendLine("------------------------------------");
             sb.AppendLine();
             sb.AppendLine("Gracias por su compra");
@@ -195,6 +201,12 @@ namespace Vista
 
             y += 30;
 
+            foreach (var linea in LineasDesglose())
+            {
+                e.Graphics.DrawString(linea, texto, Brushes.Black, 50, y);
+                y += 22;
+            }
+
             e.Graphics.DrawString(
                 $"TOTAL: ${ticketActual.Total:N2}",
                 total,
@@ -202,7 +214,15 @@ namespace Vista
                 50,
                 y);
 
-            y += 50;
+            y += 30;
+
+            foreach (var linea in LineasPago())
+            {
+                e.Graphics.DrawString(linea, texto, Brushes.Black, 50, y);
+                y += 22;
+            }
+
+            y += 20;
 
             e.Graphics.DrawString(
                 "Gracias por su compra",
@@ -210,6 +230,33 @@ namespace Vista
                 Brushes.Black,
                 new RectangleF(0, y, e.PageBounds.Width, 30),
                 centrado);
+        }
+
+        /// <summary>Subtotal, descuento, recargo del medio de pago e IVA; sólo las líneas que aplican.</summary>
+        private IEnumerable<string> LineasDesglose()
+        {
+            var t = ticketActual;
+            bool hayAjustes = t.Descuento != 0 || t.AjusteMedioPago != 0;
+            if (hayAjustes)
+                yield return $"Subtotal: ${t.Subtotal:N2}";
+            if (t.Descuento != 0)
+                yield return $"Descuento: -${t.Descuento:N2}";
+            if (t.AjusteMedioPago > 0)
+                yield return $"Recargo medio de pago: +${t.AjusteMedioPago:N2}";
+            else if (t.AjusteMedioPago < 0)
+                yield return $"Descuento medio de pago: -${-t.AjusteMedioPago:N2}";
+            if (t.IVA > 0)
+                yield return $"IVA incluido: ${t.IVA:N2}";
+        }
+
+        /// <summary>Monto recibido y vuelto (sólo cuando el cliente entregó más que el total).</summary>
+        private IEnumerable<string> LineasPago()
+        {
+            if (ticketActual.Vuelto > 0)
+            {
+                yield return $"Recibido: ${ticketActual.Recibido:N2}";
+                yield return $"Vuelto: ${ticketActual.Vuelto:N2}";
+            }
         }
 
         private void btnImprimir_Click(object sender, EventArgs e)

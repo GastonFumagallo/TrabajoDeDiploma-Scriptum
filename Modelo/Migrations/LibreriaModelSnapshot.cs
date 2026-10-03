@@ -88,6 +88,41 @@ namespace Modelo.Migrations
                     b.ToTable("Clientes");
                 });
 
+            modelBuilder.Entity("Modelo.DetalleOrdenReposicion", b =>
+                {
+                    b.Property<int>("DOR_ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DOR_ID"));
+
+                    b.Property<int>("DOR_CantidadPedida")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DOR_CantidadRecibida")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("DOR_CostoRecibido")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DOR_CostoUnitario")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("LIB_ID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OR_ID")
+                        .HasColumnType("int");
+
+                    b.HasKey("DOR_ID");
+
+                    b.HasIndex("LIB_ID");
+
+                    b.HasIndex("OR_ID");
+
+                    b.ToTable("DetallesOrdenReposicion");
+                });
+
             modelBuilder.Entity("Modelo.DetalleVenta", b =>
                 {
                     b.Property<int>("DV_ID")
@@ -149,6 +184,9 @@ namespace Modelo.Migrations
                     b.Property<int>("GEN_ID")
                         .HasColumnType("int");
 
+                    b.Property<bool>("LIB_Activo")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LIB_Autor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -164,19 +202,43 @@ namespace Modelo.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("LIB_ISBN")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("LIB_PrecioCosto")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("LIB_PrecioVenta")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("LIB_PuntoReposicion")
+                        .HasColumnType("int");
+
                     b.Property<int>("LIB_Stock")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LIB_StockMinimo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LIB_StockOptimo")
                         .HasColumnType("int");
 
                     b.Property<string>("LIB_Titulo")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("LIB_Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.HasKey("LIB_ID");
 
                     b.HasIndex("GEN_ID");
+
+                    b.HasIndex("LIB_ISBN")
+                        .IsUnique()
+                        .HasFilter("[LIB_ISBN] IS NOT NULL");
 
                     b.ToTable("Libros");
                 });
@@ -201,6 +263,57 @@ namespace Modelo.Migrations
                     b.ToTable("MetodosPago");
                 });
 
+            modelBuilder.Entity("Modelo.MovimientoStock", b =>
+                {
+                    b.Property<int>("MOV_ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MOV_ID"));
+
+                    b.Property<int>("LIB_ID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MOV_Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("MOV_Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MOV_Motivo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MOV_Observacion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("MOV_Referencia")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("MOV_StockAnterior")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MOV_StockResultante")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MOV_Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("MOV_Usuario")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("MOV_ID");
+
+                    b.HasIndex("LIB_ID", "MOV_Fecha");
+
+                    b.ToTable("MovimientosStock");
+                });
+
             modelBuilder.Entity("Modelo.OrdenReposicion", b =>
                 {
                     b.Property<int>("OR_ID")
@@ -209,29 +322,88 @@ namespace Modelo.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OR_ID"));
 
-                    b.Property<int>("OR_Cantidad")
-                        .HasColumnType("int");
-
                     b.Property<string>("OR_Estado")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("OR_Fecha")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("OR_LIB_ID")
-                        .HasColumnType("int");
+                    b.Property<DateTime?>("OR_FechaCancelacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("OR_FechaRecepcion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("OR_FechaSolicitud")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OR_MotivoCancelacion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("OR_Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("OR_PROV_ID")
                         .HasColumnType("int");
 
+                    b.Property<string>("OR_Usuario")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OR_UsuarioCancelacion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OR_UsuarioRecepcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.HasKey("OR_ID");
 
-                    b.HasIndex("OR_LIB_ID");
+                    b.HasIndex("OR_Estado");
 
                     b.HasIndex("OR_PROV_ID");
 
                     b.ToTable("OrdenesReposicion");
+                });
+
+            modelBuilder.Entity("Modelo.PagoVenta", b =>
+                {
+                    b.Property<int>("PAG_ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PAG_ID"));
+
+                    b.Property<int>("MP_ID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("PAG_Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("PAG_Monto")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PAG_Recibido")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PAG_Vuelto")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("VEN_ID")
+                        .HasColumnType("int");
+
+                    b.HasKey("PAG_ID");
+
+                    b.HasIndex("MP_ID");
+
+                    b.HasIndex("VEN_ID");
+
+                    b.ToTable("PagosVenta");
                 });
 
             modelBuilder.Entity("Modelo.Proveedor", b =>
@@ -525,8 +697,14 @@ namespace Modelo.Migrations
                     b.Property<int>("MP_ID")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("VEN_AjusteMedioPago")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<bool>("VEN_Anulada")
                         .HasColumnType("bit");
+
+                    b.Property<decimal>("VEN_Descuento")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("VEN_Fecha")
                         .HasColumnType("datetime2");
@@ -534,12 +712,25 @@ namespace Modelo.Migrations
                     b.Property<DateTime?>("VEN_FechaAnulacion")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("VEN_IVA")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("VEN_MotivoAnulacion")
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<decimal>("VEN_PorcentajeDescuento")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal>("VEN_Subtotal")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("VEN_Total")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("VEN_Usuario")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("VEN_UsuarioAnulacion")
                         .HasMaxLength(100)
@@ -610,6 +801,25 @@ namespace Modelo.Migrations
                     b.Navigation("CLI_Persona");
                 });
 
+            modelBuilder.Entity("Modelo.DetalleOrdenReposicion", b =>
+                {
+                    b.HasOne("Modelo.Libro", "DOR_Libro")
+                        .WithMany()
+                        .HasForeignKey("LIB_ID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Modelo.OrdenReposicion", "DOR_Orden")
+                        .WithMany("OR_Detalles")
+                        .HasForeignKey("OR_ID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DOR_Libro");
+
+                    b.Navigation("DOR_Orden");
+                });
+
             modelBuilder.Entity("Modelo.DetalleVenta", b =>
                 {
                     b.HasOne("Modelo.Libro", "DV_Libro")
@@ -640,23 +850,45 @@ namespace Modelo.Migrations
                     b.Navigation("LIB_Genero");
                 });
 
-            modelBuilder.Entity("Modelo.OrdenReposicion", b =>
+            modelBuilder.Entity("Modelo.MovimientoStock", b =>
                 {
-                    b.HasOne("Modelo.Libro", "OR_Libro")
+                    b.HasOne("Modelo.Libro", "MOV_Libro")
                         .WithMany()
-                        .HasForeignKey("OR_LIB_ID")
+                        .HasForeignKey("LIB_ID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("MOV_Libro");
+                });
+
+            modelBuilder.Entity("Modelo.OrdenReposicion", b =>
+                {
                     b.HasOne("Modelo.Proveedor", "OR_Proveedor")
                         .WithMany()
                         .HasForeignKey("OR_PROV_ID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("OR_Libro");
-
                     b.Navigation("OR_Proveedor");
+                });
+
+            modelBuilder.Entity("Modelo.PagoVenta", b =>
+                {
+                    b.HasOne("Modelo.MetodoPago", "PAG_MetodoPago")
+                        .WithMany()
+                        .HasForeignKey("MP_ID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Modelo.Venta", "PAG_Venta")
+                        .WithMany("VEN_Pagos")
+                        .HasForeignKey("VEN_ID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PAG_MetodoPago");
+
+                    b.Navigation("PAG_Venta");
                 });
 
             modelBuilder.Entity("Modelo.Proveedor", b =>
@@ -775,6 +1007,11 @@ namespace Modelo.Migrations
                     b.Navigation("LIB_Proveedores");
                 });
 
+            modelBuilder.Entity("Modelo.OrdenReposicion", b =>
+                {
+                    b.Navigation("OR_Detalles");
+                });
+
             modelBuilder.Entity("Modelo.Proveedor", b =>
                 {
                     b.Navigation("PROV_Libros");
@@ -802,6 +1039,8 @@ namespace Modelo.Migrations
             modelBuilder.Entity("Modelo.Venta", b =>
                 {
                     b.Navigation("VEN_Detalles");
+
+                    b.Navigation("VEN_Pagos");
                 });
 #pragma warning restore 612, 618
         }
