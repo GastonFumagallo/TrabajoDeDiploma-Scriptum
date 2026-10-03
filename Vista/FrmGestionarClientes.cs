@@ -1,6 +1,5 @@
-﻿using Controladora;
+using Controladora.Abm;
 using Modelo;
-using Modelo.Seguridad;
 using Servicios;
 using System;
 using System.Collections.Generic;
@@ -9,146 +8,126 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
-using Vista.Theme;
+using Vista.Comun;
 
 namespace Vista
 {
+    /// <summary>
+    /// Gestión de clientes. Misma estructura que <see cref="FrmGestionarProveedores"/> (comportamiento común en
+    /// <see cref="ListadoAbm{TListado}"/>). "Consumidor Final" es un cliente de sistema: aparece primero,
+    /// en azul, y no se puede modificar ni dar de baja.
+    /// </summary>
     public partial class FrmGestionarClientes : Form
     {
+        private const string TodasLasLocalidades = "Todas";
+
+        private readonly ClienteService servicio = ClienteService.Instancia;
+        private readonly ListadoAbm<ClienteListadoDTO> listado;
+
         public FrmGestionarClientes()
         {
             InitializeComponent();
-            CargarClientes();
-        }
+            ConfigurarGrilla();
 
-        private void btnAgregar_Click(object sender, EventArgs e)
-        {
-            FrmAgregarCliente vistaCliente = new FrmAgregarCliente();
-            vistaCliente.ShowDialog();
-            CargarClientes();
-        }
-
-        public void CargarClientes()
-        {
-            var listaClientes = ControladoraClientes.Instancia.ObtenerClientesGrid();
-            dgvClientes.DataSource = null;
-            dgvClientes.DataSource = listaClientes;
-            dgvClientes.Columns["CLIDTO_ID"].Visible = false;
-        }
-
-        private void btnSalir_Click(object sender, EventArgs e)
-        {
-            FrmMenu principal = Application.OpenForms["FrmMenu"] as FrmMenu;
-
-            if (principal != null)
+            listado = new ListadoAbm<ClienteListadoDTO>(this, new()
             {
-                principal.MostrarInicio();
-            }
+                Grilla = dgvListado,
+                Buscar = txtBuscar,
+                Estado = cbEstado,
+                Resumen = lblResumen,
+                Nuevo = btnNuevo,
+                Editar = btnEditar,
+                CambiarEstado = btnCambiarEstado,
+                Exportar = btnExportar,
+                Imprimir = btnImprimir,
+                Entidad = "cliente",
+                EntidadPlural = "clientes",
+                Id = c => c.Id,
+                Activo = c => c.Activo,
+                Descripcion = c => c.Nombre,
+                Protegido = c => c.EsConsumidorFinal,
+                Cargar = (texto, estado, ct) => servicio.ObtenerTodosAsync(new FiltroClientes
+                {
+                    Texto = texto,
+                    Estado = estado,
+                    Localidad = cbFiltroExtra.SelectedItem as string is { } l && l != TodasLasLocalidades ? l : null,
+                }, ct),
+                AbrirEdicion = AbrirEdicion,
+                CambiarEstadoServicio = servicio.CambiarEstadoAsync,
+                AdvertenciaBaja = c => c.Ventas > 0 ? $"tiene {c.Ventas} venta(s) registradas; se conservan en el historial." : null,
+            });
 
-            this.Close();
+            // El cliente de sistema se distingue visualmente.
+            dgvListado.CellFormatting += (_, e) =>
+            {
+                if (e.RowIndex >= 0 && e.CellStyle != null && dgvListado.Rows[e.RowIndex].DataBoundItem is ClienteListadoDTO { EsConsumidorFinal: true })
+                    e.CellStyle.ForeColor = Color.SteelBlue;
+            };
 
+            cbFiltroExtra.SelectedIndexChanged += async (_, _) => await listado.CargarAsync();
+            btnLimpiarFiltros.Click += async (_, _) =>
+            {
+                if (cbFiltroExtra.Items.Count > 0) cbFiltroExtra.SelectedIndex = 0;
+                await listado.LimpiarFiltrosAsync();
+            };
+            btnSalir.Click += (_, _) => Salir();
         }
-        private void AplicarSeguridad()
+
+        private void ConfigurarGrilla()
         {
-            btnAgregar.Visible = PermisoService.Instancia.TienePermiso("AgregarCliente");
-            btnModificar.Visible = PermisoService.Instancia.TienePermiso("ModificarCliente");
-            btnEliminar.Visible = PermisoService.Instancia.TienePermiso("EliminarCliente");
+            GrillaHelper.ConfigurarListado(dgvListado);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Id), "ID", peso: 40, derecha: true);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.DocumentoFormateado), "Documento", peso: 120);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Nombre), "Nombre / Razón social", peso: 200);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Telefono), "Teléfono", peso: 100);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Email), "Email", peso: 170);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Localidad), "Localidad", peso: 110);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.LimiteCredito), "Límite crédito", peso: 80, formato: "N2", derecha: true);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Ventas), "Ventas", peso: 50, derecha: true);
+            GrillaHelper.Columna(dgvListado, nameof(ClienteListadoDTO.Estado), "Estado", peso: 60);
         }
-        private void btnModificar_Click(object sender, EventArgs e)
+
+        private async void FrmGestionarClientes_Load(object sender, EventArgs e)
         {
-            if (dgvClientes.SelectedRows.Count == 0)
-            {
-                MessageBox.Show("Seleccioná un cliente para modificar.");
-                return;
-            }
-            if (dgvClientes.CurrentRow != null)
-            {
-                ClienteDTO clienteSeleccionado = (ClienteDTO)dgvClientes.CurrentRow.DataBoundItem;
-                FrmModificarCliente modificarCliente = new FrmModificarCliente();
-                modificarCliente.CargarCliente(clienteSeleccionado);
-                modificarCliente.ShowDialog();
-                CargarClientes();
-            }
-            else
-            {
-                MessageBox.Show("Seleccioná un cliente para modificar.");
-                return;
-            }
+            btnNuevo.Visible = PermisoService.Instancia.TienePermiso("AgregarCliente");
+            btnEditar.Visible = PermisoService.Instancia.TienePermiso("ModificarCliente");
+            btnCambiarEstado.Visible = PermisoService.Instancia.TienePermiso("EliminarCliente");
 
+            await CargarLocalidadesAsync();
+            await listado.IniciarAsync();
         }
 
-        private void btnEliminar_Click(object sender, EventArgs e)
+        private async Task CargarLocalidadesAsync()
         {
             try
             {
-                if (dgvClientes.CurrentRow != null)
-                {
-                    var clienteSeleccionado = (ClienteDTO)dgvClientes.CurrentRow.DataBoundItem;
-                    var cliente1 = ControladoraClientes.Instancia.BuscarClienteIndividual(clienteSeleccionado);
-                    var confirmacion = MessageBox.Show($"¿Está seguro que desea eliminar el cliente '{clienteSeleccionado.Nombre}'?", "Confirmar eliminación", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (confirmacion == DialogResult.Yes)
-                    {
-                        var mensaje = ControladoraClientes.Instancia.EliminarCliente(cliente1);
-                        MessageBox.Show(mensaje);
-                        CargarClientes();
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Seleccioná un cliente para eliminar.");
-                    return;
-                }
+                string? actual = cbFiltroExtra.SelectedItem as string;
+                var localidades = await servicio.ObtenerLocalidadesAsync(listado.Token);
+                cbFiltroExtra.Items.Clear();
+                cbFiltroExtra.Items.Add(TodasLasLocalidades);
+                cbFiltroExtra.Items.AddRange(localidades.ToArray());
+                cbFiltroExtra.SelectedItem = actual != null && localidades.Contains(actual) ? actual : TodasLasLocalidades;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al eliminar producto: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ManejadorErrores.Mostrar(this, ex, "No se pudieron cargar las localidades.");
             }
         }
 
-        private void btnBorrarFiltros_Click(object sender, EventArgs e)
+        /// <summary>Abre el modal único (null = alta). Devuelve el id guardado, o null si se canceló.</summary>
+        private int? AbrirEdicion(int? id)
         {
-            CargarClientes();
-            txtFiltrar.Text = string.Empty;
+            using var frm = new FrmEditarCliente(id);
+            if (frm.ShowDialog(this) != DialogResult.OK) return null;
+            _ = CargarLocalidadesAsync();   // pudo agregarse una localidad nueva
+            return frm.ClienteId;
         }
 
-        private void btnFiltrar_Click(object sender, EventArgs e)
+        private void Salir()
         {
-            if (string.IsNullOrWhiteSpace(txtFiltrar.Text))
-            {
-                MessageBox.Show("Ingrese un número de documento para filtrar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!int.TryParse(txtFiltrar.Text, out int dni))
-            {
-                MessageBox.Show("El DNI debe contener solo números.", "Formato Incorrecto", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            string filtro = txtFiltrar.Text.Trim().ToLower();
-            if (filtro != null && !filtro.Equals(""))
-            {
-                var clientesFiltrados = ControladoraClientes.Instancia.BuscarCliente(filtro);
-                dgvClientes.DataSource = clientesFiltrados;
-            }
-            else
-            {
-                CargarClientes();
-            }
-
-
-        }
-
-        private void txtFiltrar_TextChanged(object sender, EventArgs e)
-        {
-            string filtro = txtFiltrar.Text.Trim().ToLower();
-
-            var clientesFiltrados = ControladoraClientes.Instancia.BuscarCliente(filtro);
-            dgvClientes.DataSource = clientesFiltrados;
-        }
-
-        private void FrmGestionarClientes_Load(object sender, EventArgs e)
-        {
-            AplicarSeguridad();
+            if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
+                principal.MostrarInicio();
+            Close();
         }
     }
 }

@@ -63,8 +63,8 @@ namespace Controladora
                     Autor = l.LIB_Autor,
                     Categoria = l.LIB_Genero.GEN_Nombre,
                     // Proveedor habitual: el asociado con menor precio de compra (subconsulta, no N+1).
-                    ProveedorHabitualId = l.LIB_Proveedores.OrderBy(pl => pl.PL_PrecioCompra).Select(pl => (int?)pl.PROV_ID).FirstOrDefault(),
-                    ProveedorHabitual = l.LIB_Proveedores.OrderBy(pl => pl.PL_PrecioCompra)
+                    ProveedorHabitualId = l.LIB_Proveedores.Where(pl => pl.PL_Proveedor.PROV_Activo).OrderBy(pl => pl.PL_PrecioCompra).Select(pl => (int?)pl.PROV_ID).FirstOrDefault(),
+                    ProveedorHabitual = l.LIB_Proveedores.Where(pl => pl.PL_Proveedor.PROV_Activo).OrderBy(pl => pl.PL_PrecioCompra)
                         .Select(pl => pl.PL_Proveedor.PROV_Empresa != "" ? pl.PL_Proveedor.PROV_Empresa : pl.PL_Proveedor.PER_Proveedor.PER_Nombre)
                         .FirstOrDefault(),
                     Stock = l.LIB_Stock,

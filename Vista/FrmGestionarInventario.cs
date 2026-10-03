@@ -226,7 +226,7 @@ namespace Vista
             {
                 UseWaitCursor = true;
                 var generos = await InventarioService.Instancia.ObtenerGenerosAsync(ctsFormulario.Token);
-                var proveedores = await OrdenReposicionService.Instancia.ObtenerProveedoresAsync(ctsFormulario.Token);
+                var proveedores = await OrdenReposicionService.Instancia.ObtenerProveedoresAsync(incluirInactivos: true, ctsFormulario.Token);
                 var opcionesProveedor = new[] { Todos }.Concat(proveedores.Select(p => new OpcionDTO(p.ProveedorId, p.ToString()))).ToList();
 
                 cbCategoria.DataSource = new[] { Todos }.Concat(generos).ToList();

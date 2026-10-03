@@ -58,11 +58,13 @@ namespace Modelo
             try
             {
                 // 1. Cliente (o Consumidor Final por defecto).
-                var cliente = solicitud.ClientePersonaId is int personaId
-                    ? await db.Clientes.FirstOrDefaultAsync(c => c.CLI_Persona.PER_ID == personaId, ct)
-                    : await ControladoraClientes.ObtenerOCrearConsumidorFinalAsync(db, ct);
+                var cliente = solicitud.ClienteId is int clienteId
+                    ? await db.Clientes.FirstOrDefaultAsync(c => c.CLI_ID == clienteId, ct)
+                    : await Controladora.Abm.ClienteService.ObtenerOCrearConsumidorFinalAsync(db, ct);
                 if (cliente == null)
                     return await FallarAsync(tx, "El cliente seleccionado ya no existe.");
+                if (!cliente.CLI_Activo)
+                    return await FallarAsync(tx, "El cliente seleccionado está dado de baja.");
 
                 // 2. Medio de pago activo.
                 var metodoPago = await db.MetodosPago.FirstOrDefaultAsync(m => m.MP_ID == solicitud.MetodoPagoId, ct);

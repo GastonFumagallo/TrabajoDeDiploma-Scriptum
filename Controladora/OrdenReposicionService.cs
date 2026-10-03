@@ -88,10 +88,11 @@ namespace Controladora
                 .FirstOrDefaultAsync(ct);
         }
 
-        public async Task<List<ProveedorContactoDTO>> ObtenerProveedoresAsync(CancellationToken ct = default)
+        public async Task<List<ProveedorContactoDTO>> ObtenerProveedoresAsync(bool incluirInactivos, CancellationToken ct = default)
         {
             await using var db = new Libreria();
             return await db.Proveedores.AsNoTracking()
+                .Where(p => incluirInactivos || p.PROV_Activo)
                 .OrderBy(p => p.PROV_Empresa).ThenBy(p => p.PER_Proveedor.PER_Nombre)
                 .Select(p => new ProveedorContactoDTO
                 {
@@ -100,6 +101,7 @@ namespace Controladora
                     Contacto = p.PER_Proveedor.PER_Nombre,
                     Telefono = p.PER_Proveedor.PER_Telefono,
                     Email = p.PER_Proveedor.PER_Mail,
+                    Activo = p.PROV_Activo,
                 })
                 .ToListAsync(ct);
         }
@@ -175,8 +177,8 @@ namespace Controladora
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             try
             {
-                if (!await db.Proveedores.AnyAsync(p => p.PROV_ID == s.ProveedorId, ct))
-                    return await InventarioService.FallarAsync(tx, "El proveedor seleccionado ya no existe.");
+                if (!await db.Proveedores.AnyAsync(p => p.PROV_ID == s.ProveedorId && p.PROV_Activo, ct))
+                    return await InventarioService.FallarAsync(tx, "El proveedor seleccionado no existe o está dado de baja.");
 
                 var ids = items.Select(i => i.LibroId).ToList();
                 if (await db.Libros.CountAsync(l => ids.Contains(l.LIB_ID) && l.LIB_Activo, ct) != ids.Count)
@@ -263,7 +265,7 @@ namespace Controladora
                     {
                         l.LIB_ID,
                         l.LIB_Titulo,
-                        ProveedorId = l.LIB_Proveedores.OrderBy(pl => pl.PL_PrecioCompra).Select(pl => (int?)pl.PROV_ID).FirstOrDefault(),
+                        ProveedorId = l.LIB_Proveedores.Where(pl => pl.PL_Proveedor.PROV_Activo).OrderBy(pl => pl.PL_PrecioCompra).Select(pl => (int?)pl.PROV_ID).FirstOrDefault(),
                     })
                     .ToListAsync(ct))
                     .Select(x => (x.LIB_ID, x.LIB_Titulo, x.ProveedorId))

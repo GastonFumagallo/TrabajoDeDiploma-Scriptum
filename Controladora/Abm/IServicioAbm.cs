@@ -32,5 +32,27 @@ namespace Controladora.Abm
 
         /// <summary>true si el identificador único (ISBN, CUIT, DNI) ya lo usa otro registro (activo o no).</summary>
         Task<bool> ExisteIdentificadorAsync(string identificador, int? excluirId = null, CancellationToken ct = default);
+
+        /// <summary>Reactiva un registro inactivo y devuelve su ficha (flujo "ya existe pero está dado de baja").</summary>
+        Task<TEdicion?> ReactivarAsync(int id, CancellationToken ct = default);
+    }
+
+    public interface ILibroService : IServicioAbm<LibroListadoDTO, LibroEdicionDTO, FiltroLibros> { }
+
+    public interface IProveedorService : IServicioAbm<ProveedorListadoDTO, ProveedorEdicionDTO, FiltroProveedores>
+    {
+        /// <summary>Proveedores activos para combos (fichas de libro, órdenes de reposición).</summary>
+        Task<List<OpcionDTO>> ObtenerOpcionesAsync(CancellationToken ct = default);
+    }
+
+    public interface IClienteService : IServicioAbm<ClienteListadoDTO, ClienteEdicionDTO, FiltroClientes>
+    {
+        /// <summary>Clientes activos para el punto de venta, con Consumidor Final primero.</summary>
+        Task<List<ClienteDTO>> ObtenerParaVentaAsync(CancellationToken ct = default);
+
+        Task<ClienteDTO> ObtenerConsumidorFinalAsync(CancellationToken ct = default);
+
+        /// <summary>Localidades cargadas (distintas), para filtros y sugerencias.</summary>
+        Task<List<string>> ObtenerLocalidadesAsync(CancellationToken ct = default);
     }
 }
