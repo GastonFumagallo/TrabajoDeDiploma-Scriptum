@@ -21,41 +21,29 @@ namespace Servicios
     {
         /// <summary>
         /// Envía al proveedor el pedido de reposición. Las credenciales SMTP se leen de configuración
-        /// (sección "Smtp" de appsettings.local.json, que no se versiona); nunca deben estar en el código.
+        /// (ver <see cref="ConfiguracionSmtp"/>); nunca deben estar en el código.
         /// Devuelve null si se envió, o un mensaje de error apto para el usuario.
         /// </summary>
         public static async Task<string?> EnviarSolicitudReposicionAsync(SolicitudReposicionEmail solicitud, CancellationToken ct = default)
         {
-            string? servidor = ConfigurationHelper.Get("Smtp:Servidor");
-            string? usuario = ConfigurationHelper.Get("Smtp:Usuario");
-            string? clave = ConfigurationHelper.Get("Smtp:Clave");
-            string remitente = ConfigurationHelper.Get("Smtp:Remitente") ?? usuario ?? string.Empty;
-            string nombreRemitente = ConfigurationHelper.Get("Smtp:NombreRemitente") ?? "Librería SCRIPTUM";
-            int puerto = int.TryParse(ConfigurationHelper.Get("Smtp:Puerto"), out var p) ? p : 587;
-
-            if (string.IsNullOrWhiteSpace(servidor) || string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(clave))
-                return "El envío de correos no está configurado (falta la sección Smtp en appsettings.local.json).";
-
             if (string.IsNullOrWhiteSpace(solicitud.EmailProveedor))
                 return "El proveedor no tiene un email cargado.";
+
+            using var client = ConfiguracionSmtp.CrearCliente(out string remitente, out string? errorConfig);
+            if (client == null)
+                return errorConfig;
 
             try
             {
                 using var mail = new MailMessage
                 {
-                    From = new MailAddress(remitente, nombreRemitente),
+                    From = new MailAddress(remitente, ConfiguracionSmtp.NombreRemitente),
                     Subject = $"Solicitud de reposición {solicitud.NumeroOrden} - Librería SCRIPTUM",
                     Body = ArmarCuerpo(solicitud),
                     IsBodyHtml = true,
                 };
                 mail.To.Add(solicitud.EmailProveedor);
 
-                using var client = new SmtpClient(servidor, puerto)
-                {
-                    EnableSsl = true,
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(usuario, clave),
-                };
                 await client.SendMailAsync(mail, ct);
                 return null;
             }
