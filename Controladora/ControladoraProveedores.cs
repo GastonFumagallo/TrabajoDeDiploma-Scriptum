@@ -31,17 +31,6 @@ namespace Controladora
                 PLDTO_PROVID = pl.PL_Proveedor.PER_Proveedor.PER_ID,
             }).ToList();
         }
-        public List<ProveedorLibroInventarioDTO> obtenerProveedoresInventario(int idLibro)
-        {
-            return Libreria.Contexto.ProveedoresLibros
-                .Where(pl => pl.LIB_ID == idLibro)
-                .Select(pl => new ProveedorLibroInventarioDTO
-                {
-                    NombreProveedor = pl.PL_Proveedor.PER_Proveedor.PER_Nombre,
-                    Telefono = pl.PL_Proveedor.PER_Proveedor.PER_Telefono,
-                    Email = pl.PL_Proveedor.PER_Proveedor.PER_Mail,
-                }).ToList();
-        }
         public Proveedor ObtenerProveedorPorId(int proveedorID)
         {
             return Libreria.Contexto.Proveedores.Include(p => p.PER_Proveedor).FirstOrDefault(p => p.PER_Proveedor.PER_ID == proveedorID);

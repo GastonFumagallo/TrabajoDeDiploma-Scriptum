@@ -1,4 +1,4 @@
-﻿using Modelo;
+using Modelo;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -7,68 +7,99 @@ using System.Text;
 
 namespace Servicios
 {
+    /// <summary>Datos que necesita el correo de solicitud de reposición (independiente de EF).</summary>
+    public sealed class SolicitudReposicionEmail
+    {
+        public string NumeroOrden { get; init; } = string.Empty;
+        public string EmailProveedor { get; init; } = string.Empty;
+        public string NombreProveedor { get; init; } = string.Empty;
+        public string? Observaciones { get; init; }
+        public IReadOnlyList<(string Titulo, string? Codigo, int Cantidad)> Items { get; init; } = Array.Empty<(string, string?, int)>();
+    }
+
     public static class ServiciosOrdenReposicion
     {
-        public static bool EnviarSolicitudReposicion(Proveedor proveedor, Libro libro, int cantidad)
+        /// <summary>
+        /// Envía al proveedor el pedido de reposición. Las credenciales SMTP se leen de configuración
+        /// (sección "Smtp" de appsettings.local.json, que no se versiona); nunca deben estar en el código.
+        /// Devuelve null si se envió, o un mensaje de error apto para el usuario.
+        /// </summary>
+        public static async Task<string?> EnviarSolicitudReposicionAsync(SolicitudReposicionEmail solicitud, CancellationToken ct = default)
         {
-            string body = $@"
-                <div style='font-family:Segoe UI;padding:20px'>
-                    <h2>Solicitud de Reposición - SCRIPTUM</h2>
+            string? servidor = ConfigurationHelper.Get("Smtp:Servidor");
+            string? usuario = ConfigurationHelper.Get("Smtp:Usuario");
+            string? clave = ConfigurationHelper.Get("Smtp:Clave");
+            string remitente = ConfigurationHelper.Get("Smtp:Remitente") ?? usuario ?? string.Empty;
+            string nombreRemitente = ConfigurationHelper.Get("Smtp:NombreRemitente") ?? "Librería SCRIPTUM";
+            int puerto = int.TryParse(ConfigurationHelper.Get("Smtp:Puerto"), out var p) ? p : 587;
 
-                     <p>Estimados,</p>
+            if (string.IsNullOrWhiteSpace(servidor) || string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(clave))
+                return "El envío de correos no está configurado (falta la sección Smtp en appsettings.local.json).";
 
-                     <p>Necesitamos reponer stock del siguiente libro:</p>
-
-                     <table style='border-collapse:collapse'>
-                        <tr>
-                            <td><b>Libro:</b></td>
-                            <td>{libro.LIB_Titulo}</td>
-                        </tr>
-                        <tr>
-                            <td><b>Cantidad:</b></td>
-                            <td>{cantidad}</td>
-                        </tr>
-                    </table>
-
-                    <br>
-
-                    <p>
-                        Solicitamos reservar dicha cantidad para una futura compra.
-                    </p>
-
-                    <p>
-                        Quedamos atentos a su confirmación.
-                    </p>
-
-                    <br>
-
-                    <b>Librería SCRIPTUM</b>
-                </div>";
-
-            string from = "libreriascriptum.notificaciones@gmail.com";
+            if (string.IsNullOrWhiteSpace(solicitud.EmailProveedor))
+                return "El proveedor no tiene un email cargado.";
 
             try
             {
-                MailMessage mail = new MailMessage();
-                mail.From = new MailAddress(from);
-                mail.To.Add(proveedor.PER_Proveedor.PER_Mail);
+                using var mail = new MailMessage
+                {
+                    From = new MailAddress(remitente, nombreRemitente),
+                    Subject = $"Solicitud de reposición {solicitud.NumeroOrden} - Librería SCRIPTUM",
+                    Body = ArmarCuerpo(solicitud),
+                    IsBodyHtml = true,
+                };
+                mail.To.Add(solicitud.EmailProveedor);
 
-                mail.Subject = $"Solicitud de reposición - {libro.LIB_Titulo}";
-                mail.Body = body;
-                mail.IsBodyHtml = true;
-
-                SmtpClient client = new SmtpClient("smtp.gmail.com");
-                client.Port = 587;
-                client.EnableSsl = true;
-                client.UseDefaultCredentials = false;
-                client.Credentials = new NetworkCredential(from, "tboo mkvp vbfa txmc");
-                client.Send(mail);
-                return true;
+                using var client = new SmtpClient(servidor, puerto)
+                {
+                    EnableSsl = true,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(usuario, clave),
+                };
+                await client.SendMailAsync(mail, ct);
+                return null;
             }
-            catch
+            catch (OperationCanceledException)
             {
-                return false;
+                throw;
             }
+            catch (Exception ex)
+            {
+                return $"No se pudo enviar el correo: {ex.GetBaseException().Message}";
+            }
+        }
+
+        private static string ArmarCuerpo(SolicitudReposicionEmail s)
+        {
+            var filas = new StringBuilder();
+            foreach (var item in s.Items)
+            {
+                filas.Append("<tr>")
+                     .Append($"<td style='padding:4px 12px;border:1px solid #ccc'>{WebUtility.HtmlEncode(item.Titulo)}</td>")
+                     .Append($"<td style='padding:4px 12px;border:1px solid #ccc'>{WebUtility.HtmlEncode(item.Codigo ?? "-")}</td>")
+                     .Append($"<td style='padding:4px 12px;border:1px solid #ccc;text-align:right'>{item.Cantidad}</td>")
+                     .Append("</tr>");
+            }
+
+            string observaciones = string.IsNullOrWhiteSpace(s.Observaciones)
+                ? string.Empty
+                : $"<p><b>Observaciones:</b> {WebUtility.HtmlEncode(s.Observaciones)}</p>";
+
+            return $@"
+<div style='font-family:Segoe UI;padding:20px'>
+    <h2>Solicitud de reposición {WebUtility.HtmlEncode(s.NumeroOrden)} - SCRIPTUM</h2>
+    <p>Estimados {WebUtility.HtmlEncode(s.NombreProveedor)},</p>
+    <p>Necesitamos reponer stock de los siguientes libros:</p>
+    <table style='border-collapse:collapse'>
+        <tr><th style='padding:4px 12px;border:1px solid #ccc'>Libro</th>
+            <th style='padding:4px 12px;border:1px solid #ccc'>ISBN</th>
+            <th style='padding:4px 12px;border:1px solid #ccc'>Cantidad</th></tr>
+        {filas}
+    </table>
+    {observaciones}
+    <p>Quedamos atentos a su confirmación.</p>
+    <br><b>Librería SCRIPTUM</b>
+</div>";
         }
     }
 }

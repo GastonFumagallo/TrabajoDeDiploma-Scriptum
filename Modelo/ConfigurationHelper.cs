@@ -13,10 +13,16 @@ namespace Modelo
 
         static ConfigurationHelper()
         {
+            // appsettings.local.json (opcional, fuera de git) pisa a appsettings.json:
+            // ahí van los secretos, como la clave SMTP. Ver appsettings.local.example.json.
             _configuration = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile("appsettings.local.json", optional: true)
                 .Build();
         }
+
+        /// <summary>Lee un valor de configuración (ej. "Smtp:Usuario"). Devuelve null si no existe.</summary>
+        public static string? Get(string clave) => _configuration[clave];
 
         public static string GetConnectionString(string name)
         {

@@ -88,15 +88,16 @@ namespace Modelo
                 if (calculo.PagoInsuficiente)
                     return await FallarAsync(tx, $"El monto recibido (${calculo.Recibido:N2}) no cubre el total (${calculo.Total:N2}).");
 
-                // 5. Descuento de stock atómico: el UPDATE sólo afecta la fila si todavía alcanza.
+                // 5. Descuento de stock atómico (sólo si todavía alcanza) con su movimiento de historial.
+                var movimientos = new List<MovimientoStock>();
                 foreach (var (libroId, cantidad) in cantidades)
                 {
-                    int filas = await db.Libros
-                        .Where(l => l.LIB_ID == libroId && l.LIB_Stock >= cantidad)
-                        .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Stock, l => l.LIB_Stock - cantidad), ct);
+                    var mov = await RegistroStock.AplicarAsync(db, libroId, -cantidad, TipoMovimientoStock.Venta,
+                        solicitud.Usuario, motivo: "Venta", ct: ct);
 
-                    if (filas == 0)
+                    if (mov == null)
                         return await FallarAsync(tx, $"Stock insuficiente para '{libros[libroId].LIB_Titulo}'.");
+                    movimientos.Add(mov);
                 }
 
                 // 6. Cabecera + detalles + pago (movimiento de caja), en un solo SaveChanges.
@@ -142,6 +143,13 @@ namespace Modelo
 
                 db.Ventas.Add(venta);
                 await db.SaveChangesAsync(ct);
+
+                // 7. Historial de stock con el número de comprobante (recién se conoce tras el primer guardado).
+                foreach (var mov in movimientos)
+                    mov.MOV_Referencia = Venta.FormatearComprobante(venta.VEN_ID);
+                db.MovimientosStock.AddRange(movimientos);
+                await db.SaveChangesAsync(ct);
+
                 await tx.CommitAsync(ct);
 
                 return ResultadoVenta.Ok(venta.VEN_ID, calculo);
@@ -212,11 +220,14 @@ namespace Modelo
 
                 foreach (var d in detalles)
                 {
-                    await db.Libros
-                        .Where(l => l.LIB_ID == d.LibroId)
-                        .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Stock, l => l.LIB_Stock + d.Cantidad), ct);
+                    var mov = await RegistroStock.AplicarAsync(db, d.LibroId, d.Cantidad, TipoMovimientoStock.AnulacionVenta,
+                        usuario, motivo: "Anulación de venta", observacion: motivo,
+                        referencia: Venta.FormatearComprobante(ventaId), ct: ct);
+                    if (mov != null)
+                        db.MovimientosStock.Add(mov);
                 }
 
+                await db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
                 return ResultadoVenta.Ok(ventaId);
             }

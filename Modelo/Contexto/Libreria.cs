@@ -47,6 +47,8 @@ namespace Modelo.Contexto
         public virtual DbSet<ProveedorLibro> ProveedoresLibros {  get; set; }
         public virtual DbSet<OrdenReposicion> OrdenesReposicion { get; set; }
         public virtual DbSet<PagoVenta> PagosVenta { get; set; }
+        public virtual DbSet<DetalleOrdenReposicion> DetallesOrdenReposicion { get; set; }
+        public virtual DbSet<MovimientoStock> MovimientosStock { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -114,17 +116,38 @@ namespace Modelo.Contexto
                 .HasForeignKey(l => l.GEN_ID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<OrdenReposicion>()
-                .HasOne(o => o.OR_Libro)
-                .WithMany()
-                .HasForeignKey(o => o.OR_LIB_ID)
-                .OnDelete(DeleteBehavior.Restrict);
-
+            // Órdenes de reposición: el proveedor y los libros son maestros (Restrict);
+            // los detalles pertenecen a la orden (cascada).
             modelBuilder.Entity<OrdenReposicion>()
                 .HasOne(o => o.OR_Proveedor)
                 .WithMany()
                 .HasForeignKey(o => o.OR_PROV_ID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdenReposicion>()
+                .HasIndex(o => o.OR_Estado);
+
+            modelBuilder.Entity<DetalleOrdenReposicion>()
+                .HasOne(d => d.DOR_Orden)
+                .WithMany(o => o.OR_Detalles)
+                .HasForeignKey(d => d.OR_ID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DetalleOrdenReposicion>()
+                .HasOne(d => d.DOR_Libro)
+                .WithMany()
+                .HasForeignKey(d => d.LIB_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Historial de stock: nunca se borra junto con el libro.
+            modelBuilder.Entity<MovimientoStock>()
+                .HasOne(m => m.MOV_Libro)
+                .WithMany()
+                .HasForeignKey(m => m.LIB_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MovimientoStock>()
+                .HasIndex(m => new { m.LIB_ID, m.MOV_Fecha });
         }
     }
 

@@ -23,12 +23,6 @@ namespace Modelo
         public decimal Precio { get; set; }
     }
 
-    public class ProveedorLibroInventarioDTO
-    {
-        public string NombreProveedor { get; set; }
-        public string Telefono { get; set; }
-        public string Email { get; set; }
-    }
 
 }
 

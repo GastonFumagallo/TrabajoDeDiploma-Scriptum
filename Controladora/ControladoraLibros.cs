@@ -22,68 +22,34 @@ namespace Controladora
                 return instancia;
             }
         }
-        public List<LibroInventarioDTO> ObtenerBajoStock()
-        {
-            var resultado = Libreria.Contexto.Libros.Select(l => new LibroInventarioDTO
-            {
-                LINVDTO_ID = l.LIB_ID,
-                Titulo = l.LIB_Titulo,
-                Stock = l.LIB_Stock,
-                Estado = l.LIB_Stock == 0
-                        ? "Sin Stock"
-                        : l.LIB_Stock <= 5
-                        ? "Stock Bajo"
-                        : "Disponible"
-            }).OrderBy(x => x.Stock)
-            .Where(x => x.Stock <= 5)
-            .ToList();
-
-            return resultado;
-
-        }
-        public List<LibroInventarioDTO> ObtenerInventario()
-        {
-            var resultado = Libreria.Contexto.Libros.Select(l => new LibroInventarioDTO
-                {
-                    LINVDTO_ID = l.LIB_ID,
-                    Titulo = l.LIB_Titulo,
-                    Stock = l.LIB_Stock,
-                    Estado = l.LIB_Stock == 0
-                        ? "Sin Stock"
-                        : l.LIB_Stock <= 5
-                        ? "Stock Bajo"
-                        : "Disponible"
-                    }).OrderBy(x => x.Stock).ToList();
-            
-            return resultado;
-            
-        }
         public Libro ObtenerLibroPorId(int libroID)
         {
             return Libreria.Contexto.Libros
                 .Include(p => p.LIB_Genero)
                 .FirstOrDefault(p => p.LIB_ID == libroID);
         }
-        public string ModificarStock(LibroDTO producto, int unidades)
-        {
-            try
-            {
-                if (!ObtenerLibros().Any(j => j.LIB_ID == producto.LIBDTO_ID))
-                {
-                    return "No se encontró el producto a modificar.";
-                }
-                Libro libro = BuscarLibroIndividual(producto);
-                libro.LIB_Stock = unidades;
-                Libreria.Contexto.SaveChanges();
-                return "Stock modificado correctamente.";
-            }
-            catch (Exception e)
-            {
-                return "Ha ocurrido una excepcion: " + e.Message;
-            }
-        }
         public void AgregarLibro(Libro libro, List<ProveedorLibroDTO> proveedoresLibros)
         {
+            // Costo inicial: el menor precio pactado con los proveedores elegidos.
+            if (libro.LIB_PrecioCosto == 0 && proveedoresLibros.Count > 0)
+                libro.LIB_PrecioCosto = proveedoresLibros.Min(p => p.Precio);
+
+            // El stock inicial también queda en el historial, como cualquier otro movimiento.
+            if (libro.LIB_Stock > 0)
+            {
+                Libreria.Contexto.MovimientosStock.Add(new MovimientoStock
+                {
+                    MOV_Libro = libro,
+                    MOV_Fecha = DateTime.Now,
+                    MOV_Tipo = TipoMovimientoStock.AltaInicial,
+                    MOV_Cantidad = libro.LIB_Stock,
+                    MOV_StockAnterior = 0,
+                    MOV_StockResultante = libro.LIB_Stock,
+                    MOV_Motivo = "Alta del libro",
+                    MOV_Usuario = Servicios.PermisoService.Instancia.UsuarioActual?.USU_Nombre,
+                });
+            }
+
             Libreria.Contexto.Libros.Add(libro);
             Libreria.Contexto.SaveChanges();
 
@@ -112,14 +78,6 @@ namespace Controladora
                           .Include(p => p.LIB_Genero)
                           .FirstOrDefault(p => p.LIB_ID == libroSeleccionado.LIBDTO_ID);
         }
-        public void modificarLibroOrden(Libro libroModificado)
-        {
-            if (libroModificado != null)
-            {
-                Libreria.Contexto.Libros.Update(libroModificado);
-                Libreria.Contexto.SaveChanges();
-            }
-        }
         public void ModificarLibro(Libro libroModificado, List<ProveedorLibroDTO> proveedoresLibros)
         {
             if (libroModificado != null)
@@ -135,7 +93,8 @@ namespace Controladora
                     libroExistente.LIB_Editorial = libroModificado.LIB_Editorial;
                     libroExistente.LIB_AñoPublicacion = libroModificado.LIB_AñoPublicacion;
                     libroExistente.LIB_Genero = libroModificado.LIB_Genero;
-                    libroExistente.LIB_Stock = libroModificado.LIB_Stock;
+                    // El stock NO se modifica desde el ABM: se cambia sólo con ventas, recepciones o ajustes
+                    // auditados en Inventario, para que todo cambio quede en el historial.
                     libroExistente.LIB_PrecioVenta = libroModificado.LIB_PrecioVenta;
                     libroExistente.LIB_ISBN = libroModificado.LIB_ISBN;
                     var proveedoresViejos = Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroExistente.LIB_ID).ToList();
@@ -194,12 +153,16 @@ namespace Controladora
         {
             try
             {
-                // Las FK DetalleVenta -> Libro y OrdenReposicion -> Libro son Restrict: se valida antes para dar
+                // Las FK DetalleVenta -> Libro y DetalleOrdenReposicion -> Libro son Restrict: se valida antes para dar
                 // un mensaje claro y no dejar entidades marcadas como Deleted en el contexto compartido.
                 if (Libreria.Contexto.DetallesVenta.Any(d => d.LIB_ID == libroSeleccionado.LIB_ID))
                     return "No se puede eliminar el libro porque figura en ventas registradas.";
-                if (Libreria.Contexto.OrdenesReposicion.Any(o => o.OR_LIB_ID == libroSeleccionado.LIB_ID))
-                    return "No se puede eliminar el libro porque tiene órdenes de reposición.";
+                if (Libreria.Contexto.DetallesOrdenReposicion.Any(d => d.LIB_ID == libroSeleccionado.LIB_ID))
+                    return "No se puede eliminar el libro porque figura en órdenes de reposición.";
+
+                // Sin ventas ni órdenes, su historial sólo tiene altas/ajustes manuales: se elimina junto con el libro.
+                var movimientos = Libreria.Contexto.MovimientosStock.Where(m => m.LIB_ID == libroSeleccionado.LIB_ID).ToList();
+                Libreria.Contexto.MovimientosStock.RemoveRange(movimientos);
 
                 var proveedoresLibro =Libreria.Contexto.ProveedoresLibros.Where(pl => pl.LIB_ID == libroSeleccionado.LIB_ID).ToList();
                 Libreria.Contexto.ProveedoresLibros.RemoveRange(proveedoresLibro);

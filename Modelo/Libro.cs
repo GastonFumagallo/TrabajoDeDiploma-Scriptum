@@ -25,6 +25,20 @@ namespace Modelo
         [Column(TypeName = "decimal(18,2)")]
         public decimal LIB_PrecioVenta { get; set; }
 
+        // Parámetros de reposición. Se cumple (validado en InventarioService): 0 <= Mínimo <= PuntoReposición <= Óptimo.
+        /// <summary>Por debajo o igual a este valor el stock es crítico.</summary>
+        public int LIB_StockMinimo { get; set; } = 2;
+
+        /// <summary>Al llegar a este valor hay que pedir reposición.</summary>
+        public int LIB_PuntoReposicion { get; set; } = 5;
+
+        /// <summary>Stock objetivo: la cantidad sugerida a pedir es Óptimo − Stock − lo ya pedido.</summary>
+        public int LIB_StockOptimo { get; set; } = 10;
+
+        /// <summary>Último costo de compra conocido (se actualiza al recibir mercadería).</summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal LIB_PrecioCosto { get; set; }
+
         /// <summary>ISBN / código de barras. Opcional; permite la carga con lector en el punto de venta.</summary>
         [StringLength(20)]
         public string? LIB_ISBN { get; set; }
@@ -40,13 +54,6 @@ namespace Modelo
         public ICollection<ProveedorLibro> LIB_Proveedores { get; set; } = new List<ProveedorLibro>();
     }
 
-    public class LibroInventarioDTO
-    {
-        public int LINVDTO_ID { get; set; }
-        public string Titulo { get; set; }
-        public int Stock { get; set; }
-        public string Estado { get; set; }
-    }
     public class LibroVentaDTO
     {
         public int LVDTO_ID { get; set; }

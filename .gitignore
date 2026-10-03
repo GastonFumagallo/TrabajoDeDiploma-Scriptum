@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Configuración local con secretos (clave SMTP, etc.). Nunca se versiona.
+**/appsettings.local.json
