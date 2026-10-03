@@ -23,18 +23,6 @@ namespace Controladora
             }
         }
 
-        public List<Genero> obtenerGeneros()
-        {
-            return Libreria.Contexto.Generos.ToList();
-        }
-        public int obtenerIDporNombre(string generoNombre)
-        {
-            return Libreria.Contexto.Generos.Where(p => p.GEN_Nombre == generoNombre).Select(p => p.GEN_ID).FirstOrDefault();
-        }
-        public Genero ObtenerGeneroPorId(int generoID)
-        {
-            return Libreria.Contexto.Generos.FirstOrDefault(p => p.GEN_ID == generoID);
-        }
         public void AgregarGenero(Genero genero)
         {
             Libreria.Contexto.Generos.Add(genero);

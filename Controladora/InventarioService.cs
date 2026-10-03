@@ -25,7 +25,7 @@ namespace Controladora
         public async Task<List<ProductoInventarioDTO>> ObtenerInventarioAsync(FiltroInventario filtro, CancellationToken ct = default)
         {
             await using var db = new Libreria();
-            var query = db.Libros.AsNoTracking();
+            var query = db.Libros.AsNoTracking().Where(l => l.LIB_Activo);   // los libros dados de baja no se gestionan
 
             if (!string.IsNullOrWhiteSpace(filtro.Texto))
             {
@@ -85,7 +85,7 @@ namespace Controladora
         public async Task<ResumenInventarioDTO> ObtenerResumenAsync(CancellationToken ct = default)
         {
             await using var db = new Libreria();
-            return await db.Libros.AsNoTracking()
+            return await db.Libros.AsNoTracking().Where(l => l.LIB_Activo)
                 .GroupBy(_ => 1)
                 .Select(g => new ResumenInventarioDTO
                 {

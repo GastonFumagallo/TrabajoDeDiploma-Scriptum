@@ -74,6 +74,9 @@ namespace Modelo
                 var libros = await db.Libros.Where(l => ids.Contains(l.LIB_ID)).ToDictionaryAsync(l => l.LIB_ID, ct);
                 if (libros.Count != ids.Count)
                     return await FallarAsync(tx, "Uno o más libros del carrito ya no existen.");
+                var inactivo = libros.Values.FirstOrDefault(l => !l.LIB_Activo);
+                if (inactivo != null)
+                    return await FallarAsync(tx, $"'{inactivo.LIB_Titulo}' está dado de baja y no se puede vender.");
 
                 // 4. Importes con la misma fórmula que ve el cajero.
                 decimal subtotal = cantidades.Sum(kv => libros[kv.Key].LIB_PrecioVenta * kv.Value);

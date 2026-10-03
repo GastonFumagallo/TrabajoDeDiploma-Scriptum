@@ -54,7 +54,9 @@ namespace Modelo.Contexto
         {
             // Búsqueda por código de barras en el punto de venta.
             modelBuilder.Entity<Libro>()
-                .HasIndex(l => l.LIB_ISBN);
+                .HasIndex(l => l.LIB_ISBN)
+                .IsUnique()
+                .HasFilter("[LIB_ISBN] IS NOT NULL");   // único sólo entre los libros que tienen ISBN
 
             // Los pagos pertenecen a la venta (cascada); el medio de pago es un maestro (Restrict).
             modelBuilder.Entity<PagoVenta>()

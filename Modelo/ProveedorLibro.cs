@@ -16,12 +16,6 @@ namespace Modelo
         public Libro PL_Libro { get; set; }
     }
 
-    public class ProveedorLibroDTO
-    {
-        public int PLDTO_PROVID { get; set; }
-        public string Proveedor { get; set; }
-        public decimal Precio { get; set; }
-    }
 
 
 }

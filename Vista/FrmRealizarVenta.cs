@@ -47,7 +47,7 @@ namespace Vista
         }
 
         /// <summary>Ítem de la lista de sugerencias de búsqueda.</summary>
-        private sealed record SugerenciaLibro(LibroDTO Libro, int Disponible)
+        private sealed record SugerenciaLibro(LibroCatalogoDTO Libro, int Disponible)
         {
             public override string ToString() =>
                 $"{Libro.Titulo} — {Libro.Autor}    ${Libro.Precio:N2}    (stock {Disponible})";
@@ -57,10 +57,10 @@ namespace Vista
 
         private const int MaxSugerencias = 30;
 
-        private List<LibroDTO> catalogo = new();
-        private Dictionary<string, LibroDTO> catalogoPorIsbn = new();
+        private List<LibroCatalogoDTO> catalogo = new();
+        private Dictionary<string, LibroCatalogoDTO> catalogoPorIsbn = new();
         private readonly BindingList<LineaCarrito> carrito = new();
-        private LibroDTO? libroSeleccionado;
+        private LibroCatalogoDTO? libroSeleccionado;
 
         private ClienteItem? clienteActual;
         private ClienteItem? consumidorFinal;
@@ -121,7 +121,7 @@ namespace Vista
 
         private async Task CargarCatalogoAsync()
         {
-            catalogo = await ControladoraLibros.Instancia.ObtenerLibrosGridAsync(cts.Token);
+            catalogo = await Controladora.Abm.LibroService.Instancia.ObtenerCatalogoVentaAsync(cts.Token);
             catalogoPorIsbn = catalogo
                 .Select(l => (Libro: l, Isbn: Libro.NormalizarISBN(l.ISBN)))
                 .Where(x => x.Isbn != null)
@@ -129,12 +129,12 @@ namespace Vista
                 .ToDictionary(g => g.Key, g => g.First().Libro);
 
             // Refresca el tope de stock de lo que ya está en el carrito.
-            var stockPorId = catalogo.ToDictionary(l => l.LIBDTO_ID, l => l.Stock);
+            var stockPorId = catalogo.ToDictionary(l => l.Id, l => l.Stock);
             foreach (var linea in carrito)
                 linea.StockMaximo = stockPorId.TryGetValue(linea.LibroId, out int stock) ? stock : 0;
 
             if (libroSeleccionado != null)
-                SeleccionarLibro(catalogo.FirstOrDefault(l => l.LIBDTO_ID == libroSeleccionado.LIBDTO_ID), moverFoco: false);
+                SeleccionarLibro(catalogo.FirstOrDefault(l => l.Id == libroSeleccionado.Id), moverFoco: false);
         }
 
         private async Task CargarClientesAsync(int? seleccionarPersonaId = null)
@@ -340,7 +340,7 @@ namespace Vista
             }
         }
 
-        private IEnumerable<LibroDTO> BuscarEnCatalogo(string texto) =>
+        private IEnumerable<LibroCatalogoDTO> BuscarEnCatalogo(string texto) =>
             catalogo.Where(l => Contiene(l.Titulo, texto) || Contiene(l.Autor, texto) || Contiene(l.Editorial, texto)
                                 || (l.ISBN?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false))
                     .OrderBy(l => l.Titulo);
@@ -393,10 +393,10 @@ namespace Vista
 
         private int CantidadEnCarrito(int libroId) => carrito.Where(l => l.LibroId == libroId).Sum(l => l.Cantidad);
 
-        private int StockDisponible(LibroDTO libro) => libro.Stock - CantidadEnCarrito(libro.LIBDTO_ID);
+        private int StockDisponible(LibroCatalogoDTO libro) => libro.Stock - CantidadEnCarrito(libro.Id);
 
         /// <summary>Muestra el libro elegido (precio y stock visibles) y, si se pide, pasa el foco a la cantidad.</summary>
-        private void SeleccionarLibro(LibroDTO? libro, bool moverFoco)
+        private void SeleccionarLibro(LibroCatalogoDTO? libro, bool moverFoco)
         {
             libroSeleccionado = libro;
             if (libro == null)
@@ -439,7 +439,7 @@ namespace Vista
                 return false;
             }
 
-            var existente = carrito.FirstOrDefault(l => l.LibroId == libro.LIBDTO_ID);
+            var existente = carrito.FirstOrDefault(l => l.LibroId == libro.Id);
             if (existente != null)
             {
                 existente.Cantidad += cantidad;
@@ -449,7 +449,7 @@ namespace Vista
             {
                 existente = new LineaCarrito
                 {
-                    LibroId = libro.LIBDTO_ID,
+                    LibroId = libro.Id,
                     Producto = $"{libro.Titulo} — {libro.Autor}",
                     PrecioUnitario = libro.Precio,
                     Cantidad = cantidad,

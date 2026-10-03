@@ -39,9 +39,22 @@ namespace Modelo
         [Column(TypeName = "decimal(18,2)")]
         public decimal LIB_PrecioCosto { get; set; }
 
-        /// <summary>ISBN / código de barras. Opcional; permite la carga con lector en el punto de venta.</summary>
+        /// <summary>ISBN / código de barras. Opcional, pero único si se carga (índice único filtrado).</summary>
         [StringLength(20)]
         public string? LIB_ISBN { get; set; }
+
+        /// <summary>
+        /// Baja lógica: un libro inactivo no se vende ni se repone, pero se conserva para el historial
+        /// (ventas, órdenes y movimientos de stock lo siguen referenciando).
+        /// </summary>
+        public bool LIB_Activo { get; set; } = true;
+
+        /// <summary>
+        /// Token de concurrencia optimista del ABM. Se incrementa sólo al editar la ficha del libro
+        /// (no con ventas ni ajustes de stock), así una venta no invalida una edición en curso.
+        /// </summary>
+        [ConcurrencyCheck]
+        public int LIB_Version { get; set; }
 
         /// <summary>Deja sólo dígitos y la X final (ISBN-10); vacío → null. Así "978-950-..." y "978950..." coinciden.</summary>
         public static string? NormalizarISBN(string? texto)
@@ -52,29 +65,6 @@ namespace Modelo
         }
 
         public ICollection<ProveedorLibro> LIB_Proveedores { get; set; } = new List<ProveedorLibro>();
-    }
-
-    public class LibroVentaDTO
-    {
-        public int LVDTO_ID { get; set; }
-        public string Titulo { get; set; }
-        public string Editorial { get; set; }
-        public string Autor { get; set; }   
-        public decimal Precio { get; set; }
-        public int Cantidad { get; set; }
-    }
-    public class LibroDTO
-    {
-        public int LIBDTO_ID { get; set; }
-        public string Titulo { get; set; }
-        public string Autor { get; set; }
-        public string Descripcion { get; set; }
-        public string Editorial { get; set; }
-        public decimal Precio { get; set; }
-        public int Stock { get; set; }
-        public int AñoPublicacion { get; set; }
-        public string Genero { get; set; }
-        public string? ISBN { get; set; }
     }
 
 

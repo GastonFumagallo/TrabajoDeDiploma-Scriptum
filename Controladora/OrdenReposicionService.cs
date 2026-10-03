@@ -116,7 +116,7 @@ namespace Controladora
 
             await using var db = new Libreria();
             return await db.Libros.AsNoTracking()
-                .Where(l => ids.Contains(l.LIB_ID))
+                .Where(l => ids.Contains(l.LIB_ID) && l.LIB_Activo)
                 .OrderBy(l => l.LIB_Titulo)
                 .Select(l => new
                 {
@@ -179,8 +179,8 @@ namespace Controladora
                     return await InventarioService.FallarAsync(tx, "El proveedor seleccionado ya no existe.");
 
                 var ids = items.Select(i => i.LibroId).ToList();
-                if (await db.Libros.CountAsync(l => ids.Contains(l.LIB_ID), ct) != ids.Count)
-                    return await InventarioService.FallarAsync(tx, "Uno o más libros de la orden ya no existen.");
+                if (await db.Libros.CountAsync(l => ids.Contains(l.LIB_ID) && l.LIB_Activo, ct) != ids.Count)
+                    return await InventarioService.FallarAsync(tx, "Uno o más libros de la orden no existen o están dados de baja.");
 
                 OrdenReposicion orden;
                 if (s.OrdenId is int ordenId)
@@ -258,7 +258,7 @@ namespace Controladora
             await using (var db = new Libreria())
             {
                 libros = (await db.Libros.AsNoTracking()
-                    .Where(l => ids.Contains(l.LIB_ID))
+                    .Where(l => ids.Contains(l.LIB_ID) && l.LIB_Activo)
                     .Select(l => new
                     {
                         l.LIB_ID,
