@@ -132,6 +132,7 @@ namespace Modelo
                         DV_Libro = libros[libroId],
                         DV_Cantidad = cantidad,
                         DV_PrecioUnitario = libros[libroId].LIB_PrecioVenta,
+                        DV_CostoUnitario = libros[libroId].LIB_PrecioCosto,   // foto del costo para el CMV
                     });
                 }
 

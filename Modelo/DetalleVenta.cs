@@ -23,7 +23,12 @@ namespace Modelo
             [Column(TypeName = "decimal(18,2)")]
             public decimal DV_PrecioUnitario { get; set; }
 
+            /// <summary>
+            /// Costo unitario del libro al momento de la venta (foto del LIB_PrecioCosto). Permite calcular el
+            /// costo de mercadería vendida (CMV) y la ganancia real aunque el costo cambie después.
+            /// </summary>
             [Column(TypeName = "decimal(18,2)")]
+            public decimal DV_CostoUnitario { get; set; }
 
             [NotMapped]
             public decimal DV_Subtotal

@@ -1,7 +1,6 @@
-﻿using Controladora;
+using Controladora;
+using Controladora.Abm;
 using Modelo;
-using Modelo.Seguridad;
-using ScottPlot;
 using ScottPlot.WinForms;
 using Servicios;
 using System;
@@ -9,405 +8,498 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
-using static Modelo.Reportes;
+using Vista.Comun;
+
 namespace Vista
 {
+    /// <summary>
+    /// Centro de Reportes. La pantalla no calcula nada: arma <see cref="ParametrosReporte"/>, llama a
+    /// <see cref="ReporteService"/> (todo agregado en SQL, asíncrono y cancelable) y dibuja el
+    /// <see cref="ResultadoReporte"/> de forma genérica: tarjetas de KPI, grilla ordenable con formatos y gráficos.
+    /// Cambiar cualquier parámetro regenera el reporte automáticamente (con una pequeña espera para no
+    /// consultar en cada clic); F5 o "Generar" lo fuerzan.
+    /// </summary>
     public partial class FrmGestionarReportes : Form
     {
-        private FormsPlot plotIngresos;
-        private FormsPlot plotLibrosMasVendidos;
-        private FormsPlot plotVentasPorGenero;
-        private List<ReporteIngresos> cacheIngresos;
-        private List<ReporteLibroMasVendido> cacheLibrosMasVendidos;
-        private List<ReporteVentasPorGenero> cacheVentasPorGenero;
+        #region Catálogo de reportes
+
+        /// <summary>Qué parámetros usa cada reporte (los demás filtros se ocultan).</summary>
+        private sealed record DefinicionReporte(TipoReporte Tipo, string Nombre, bool Fechas = true, bool Agrupacion = false,
+            bool MedioPago = false, bool Categoria = false, bool Proveedor = false, bool Top = false, bool Criterio = false,
+            bool ConsumidorFinal = false)
+        {
+            public override string ToString() => Nombre;
+        }
+
+        private static readonly DefinicionReporte[] Reportes =
+        {
+            new(TipoReporte.VentasPorPeriodo, "Ventas y facturación por período", Agrupacion: true, MedioPago: true),
+            new(TipoReporte.VentasPorMedioPago, "Ventas por medio de pago"),
+            new(TipoReporte.RankingProductos, "Ranking de productos más vendidos", MedioPago: true, Categoria: true, Top: true, Criterio: true),
+            new(TipoReporte.StockSinMovimiento, "Stock sin movimiento (baja rotación)", Categoria: true),
+            new(TipoReporte.ValorizacionStock, "Valorización del stock actual", Fechas: false, Categoria: true),
+            new(TipoReporte.MejoresClientes, "Mejores clientes", MedioPago: true, Top: true, ConsumidorFinal: true),
+            new(TipoReporte.ComprasPorProveedor, "Compras por proveedor", Proveedor: true),
+            new(TipoReporte.OrdenesReposicion, "Órdenes de reposición emitidas", Proveedor: true),
+        };
+
+        private enum Rango { Hoy, EstaSemana, EsteMes, MesAnterior, Ultimos30Dias, AnioActual, Personalizado }
+
+        private sealed record OpcionRango(Rango Valor, string Texto)
+        {
+            public override string ToString() => Texto;
+        }
+
+        private static readonly OpcionDTO Todos = new(0, "Todos");
+
+        // Colores de las tarjetas de KPI (se aplican al dibujar, después del tema general).
+        private static readonly Color[] ColoresKpi =
+        {
+            Color.FromArgb(41, 128, 185), Color.FromArgb(39, 174, 96), Color.FromArgb(142, 68, 173), Color.FromArgb(211, 84, 0),
+        };
+
+        #endregion
+
+        private readonly ReporteService servicio = ReporteService.Instancia;
+        private readonly FormsPlot[] graficos = new FormsPlot[3];
+        private readonly System.Windows.Forms.Timer timerRegenerar = new() { Interval = 400 };
+        private readonly CancellationTokenSource ctsFormulario = new();
+        private CancellationTokenSource? ctsReporte;
+        private ResultadoReporte? ultimo;
+        private bool inicializando = true;
+        private bool fijandoRango;
+        private bool ocupado;
+
+        private (Panel Tarjeta, Label Titulo, Label Valor, Label Detalle)[] Tarjetas => new[]
+        {
+            (panelKpi1, lblKpiTitulo1, lblKpiValor1, lblKpiDetalle1),
+            (panelKpi2, lblKpiTitulo2, lblKpiValor2, lblKpiDetalle2),
+            (panelKpi3, lblKpiTitulo3, lblKpiValor3, lblKpiDetalle3),
+            (panelKpi4, lblKpiTitulo4, lblKpiValor4, lblKpiDetalle4),
+        };
 
         public FrmGestionarReportes()
         {
             InitializeComponent();
-            InicializarGraficos();
-        }
-        private void InicializarGraficos()
-        {
-            plotIngresos = new FormsPlot() { Dock = DockStyle.Fill };
-            panelIngresos.Controls.Add(plotIngresos);
+            ConfigurarGrilla();
+            ConfigurarGraficos();
+            ConfigurarParametros();
 
-            plotLibrosMasVendidos = new FormsPlot() { Dock = DockStyle.Fill };
-            panelLibrosVendidos.Controls.Add(plotLibrosMasVendidos);
+            btnGenerar.Click += async (_, _) => await GenerarAsync();
+            btnLimpiar.Click += (_, _) => LimpiarFiltros();
+            btnExcel.Click += async (_, _) => await ExportarAsync(pdf: false);
+            btnPdf.Click += async (_, _) => await ExportarAsync(pdf: true);
+            btnSalir.Click += (_, _) => Salir();
+            KeyDown += async (_, e) => { if (e.KeyCode == Keys.F5) { e.Handled = true; await GenerarAsync(); } };
+            Resize += (_, _) => CentrarPanelCargando();
 
-            plotVentasPorGenero = new FormsPlot() { Dock = DockStyle.Fill };
-            panelGeneros.Controls.Add(plotVentasPorGenero);
-        }
-
-        private void FrmGestionarReportes_Load(object sender, EventArgs e)
-        {
-            dtpDesde.Value = DateTime.Today.AddMonths(-1);
-            dtpHasta.Value = DateTime.Today;
-            AplicarSeguridad();
-
-        }
-        private void AplicarSeguridad()
-        {
-            if (btnGenerar != null)
-                btnGenerar.Visible = PermisoService.Instancia.TienePermiso("GenerarReportes");
-
-            if (btnExportar != null)
-                btnExportar.Visible = PermisoService.Instancia.TienePermiso("ExportarReportes");
+            FormClosing += (_, _) => { timerRegenerar.Stop(); ctsFormulario.Cancel(); };
+            Disposed += (_, _) => { timerRegenerar.Dispose(); ctsFormulario.Dispose(); };
         }
 
-        private void btnGenerar_Click(object sender, EventArgs e)
+        #region Configuración
+
+        private void ConfigurarGrilla()
         {
+            typeof(DataGridView).GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)?.SetValue(dgvReporte, true);
+            dgvReporte.AutoGenerateColumns = false;
+            dgvReporte.ReadOnly = true;
+            dgvReporte.AllowUserToAddRows = false;
+            dgvReporte.AllowUserToDeleteRows = false;
+            dgvReporte.AllowUserToResizeRows = false;
+            dgvReporte.RowHeadersVisible = false;
+            dgvReporte.MultiSelect = false;
+            dgvReporte.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvReporte.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvReporte.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(245, 247, 250);
+        }
+
+        private void ConfigurarGraficos()
+        {
+            for (int i = 0; i < graficos.Length; i++)
+                graficos[i] = new FormsPlot { Dock = DockStyle.Fill, Margin = new Padding(6) };
+
+            // El primero ocupa todo el ancho de la fila superior (evolución/ranking), los otros dos la inferior.
+            tlpGraficos.Controls.Add(graficos[0], 0, 0);
+            tlpGraficos.SetColumnSpan(graficos[0], 2);
+            tlpGraficos.Controls.Add(graficos[1], 0, 1);
+            tlpGraficos.Controls.Add(graficos[2], 1, 1);
+        }
+
+        private void ConfigurarParametros()
+        {
+            cbTipoReporte.Items.AddRange(Reportes);
+            cbRango.Items.AddRange(new object[]
+            {
+                new OpcionRango(Rango.Hoy, "Hoy"),
+                new OpcionRango(Rango.EstaSemana, "Esta semana"),
+                new OpcionRango(Rango.EsteMes, "Este mes"),
+                new OpcionRango(Rango.MesAnterior, "Mes anterior"),
+                new OpcionRango(Rango.Ultimos30Dias, "Últimos 30 días"),
+                new OpcionRango(Rango.AnioActual, "Año actual"),
+                new OpcionRango(Rango.Personalizado, "Personalizado"),
+            });
+            cbAgrupacion.Items.AddRange(new object[] { "Diaria", "Semanal", "Mensual" });
+            cbTop.Items.AddRange(new object[] { "Top 10", "Top 20", "Top 50" });
+            cbCriterio.Items.AddRange(new object[] { "Unidades vendidas", "Recaudación" });
+
+            cbTipoReporte.SelectedIndex = 0;
+            cbRango.SelectedIndex = 2;   // Este mes
+            cbAgrupacion.SelectedIndex = 0;
+            cbTop.SelectedIndex = 0;
+            cbCriterio.SelectedIndex = 0;
+            AplicarRango(Rango.EsteMes);
+
+            cbTipoReporte.SelectedIndexChanged += (_, _) => { ActualizarFiltrosVisibles(); ProgramarRegeneracion(); };
+            cbRango.SelectedIndexChanged += (_, _) =>
+            {
+                if (cbRango.SelectedItem is OpcionRango r && r.Valor != Rango.Personalizado) AplicarRango(r.Valor);
+                ProgramarRegeneracion();
+            };
+            // Tocar una fecha a mano pasa el rango a "Personalizado".
+            EventHandler fechaManual = (_, _) =>
+            {
+                if (!fijandoRango) SeleccionarRango(Rango.Personalizado);
+                ProgramarRegeneracion();
+            };
+            dtpDesde.ValueChanged += fechaManual;
+            dtpHasta.ValueChanged += fechaManual;
+
+            foreach (var combo in new[] { cbAgrupacion, cbMedioPago, cbCategoria, cbProveedor, cbTop, cbCriterio })
+                combo.SelectedIndexChanged += (_, _) => ProgramarRegeneracion();
+            chkExcluirConsumidorFinal.CheckedChanged += (_, _) => ProgramarRegeneracion();
+
+            timerRegenerar.Tick += async (_, _) => { timerRegenerar.Stop(); await GenerarAsync(); };
+            ActualizarFiltrosVisibles();
+        }
+
+        private async void FrmGestionarReportes_Load(object sender, EventArgs e)
+        {
+            btnGenerar.Visible = PermisoService.Instancia.TienePermiso("GenerarReportes");
+            btnExcel.Visible = btnPdf.Visible = PermisoService.Instancia.TienePermiso("ExportarReportes");
+            btnExcel.Enabled = btnPdf.Enabled = false;
+            CentrarPanelCargando();
+
             try
             {
-                DateTime desde = dtpDesde.Value.Date;
-                DateTime hasta = dtpHasta.Value.Date.AddDays(1).AddSeconds(-1);
-                generarReporteIngresos(desde, hasta);
-                generarReporteLibrosMasVendidos(desde, hasta);
-                generarReporteGeneros(desde, hasta);
+                var medios = ControladoraMetodosPago.Instancia.ObtenerMetodosPagoAsync(soloActivos: false, ctsFormulario.Token);
+                var categorias = LibroService.Instancia.ObtenerGenerosAsync(ctsFormulario.Token);
+                var proveedores = OrdenReposicionService.Instancia.ObtenerProveedoresAsync(incluirInactivos: true, ctsFormulario.Token);
+                await Task.WhenAll(medios, categorias, proveedores);
+
+                cbMedioPago.DataSource = new[] { Todos }.Concat(medios.Result.Select(m => new OpcionDTO(m.MP_ID, m.MP_Nombre))).ToList();
+                cbCategoria.DataSource = new[] { Todos }.Concat(categorias.Result).ToList();
+                cbProveedor.DataSource = new[] { Todos }.Concat(proveedores.Result.Select(p => new OpcionDTO(p.ProveedorId, p.ToString()))).ToList();
+            }
+            catch (OperationCanceledException) { return; }
+            catch (Exception ex)
+            {
+                ManejadorErrores.Mostrar(this, ex, "No se pudieron cargar los filtros.");
+            }
+
+            inicializando = false;
+            if (btnGenerar.Visible) await GenerarAsync();
+        }
+
+        #endregion
+
+        #region Parámetros
+
+        private DefinicionReporte Actual => (DefinicionReporte)cbTipoReporte.SelectedItem!;
+
+        /// <summary>Muestra sólo los filtros que usa el reporte elegido.</summary>
+        private void ActualizarFiltrosVisibles()
+        {
+            var d = Actual;
+            lblRango.Visible = cbRango.Visible = lblDesde.Visible = dtpDesde.Visible = lblHasta.Visible = dtpHasta.Visible = d.Fechas;
+            lblAgrupacion.Visible = cbAgrupacion.Visible = d.Agrupacion;
+            pnlFiltroMedio.Visible = d.MedioPago;
+            pnlFiltroCategoria.Visible = d.Categoria;
+            pnlFiltroProveedor.Visible = d.Proveedor;
+            pnlFiltroTop.Visible = d.Top;
+            pnlFiltroCriterio.Visible = d.Criterio;
+            pnlFiltroConsumidor.Visible = d.ConsumidorFinal;
+        }
+
+        private void AplicarRango(Rango rango)
+        {
+            DateTime hoy = DateTime.Today;
+            (DateTime desde, DateTime hasta) = rango switch
+            {
+                Rango.Hoy => (hoy, hoy),
+                Rango.EstaSemana => (hoy.AddDays(-(((int)hoy.DayOfWeek + 6) % 7)), hoy),
+                Rango.EsteMes => (new DateTime(hoy.Year, hoy.Month, 1), hoy),
+                Rango.MesAnterior => (new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-1), new DateTime(hoy.Year, hoy.Month, 1).AddDays(-1)),
+                Rango.Ultimos30Dias => (hoy.AddDays(-29), hoy),
+                Rango.AnioActual => (new DateTime(hoy.Year, 1, 1), hoy),
+                _ => (dtpDesde.Value.Date, dtpHasta.Value.Date),
+            };
+
+            fijandoRango = true;
+            dtpDesde.Value = desde;
+            dtpHasta.Value = hasta;
+            fijandoRango = false;
+
+            // Agrupación sugerida según el largo del período (el usuario la puede cambiar).
+            int dias = (hasta - desde).Days;
+            cbAgrupacion.SelectedIndex = dias > 120 ? 2 : dias > 31 ? 1 : 0;
+        }
+
+        private void SeleccionarRango(Rango rango)
+        {
+            fijandoRango = true;
+            cbRango.SelectedItem = cbRango.Items.Cast<OpcionRango>().First(r => r.Valor == rango);
+            fijandoRango = false;
+        }
+
+        private void ProgramarRegeneracion()
+        {
+            if (inicializando || fijandoRango || !btnGenerar.Visible) return;
+            timerRegenerar.Stop();
+            timerRegenerar.Start();
+        }
+
+        private ParametrosReporte ArmarParametros()
+        {
+            var d = Actual;
+            int? Id(ComboBox cb) => cb.SelectedItem is OpcionDTO { Id: > 0 } o ? o.Id : null;
+
+            var filtros = new List<string>();
+            if (d.MedioPago && Id(cbMedioPago) != null) filtros.Add($"Medio: {cbMedioPago.Text}");
+            if (d.Categoria && Id(cbCategoria) != null) filtros.Add($"Categoría: {cbCategoria.Text}");
+            if (d.Proveedor && Id(cbProveedor) != null) filtros.Add($"Proveedor: {cbProveedor.Text}");
+
+            return new ParametrosReporte
+            {
+                Tipo = d.Tipo,
+                Desde = dtpDesde.Value.Date,
+                Hasta = dtpHasta.Value.Date,
+                Agrupacion = (Agrupacion)Math.Max(0, cbAgrupacion.SelectedIndex),
+                MetodoPagoId = d.MedioPago ? Id(cbMedioPago) : null,
+                GeneroId = d.Categoria ? Id(cbCategoria) : null,
+                ProveedorId = d.Proveedor ? Id(cbProveedor) : null,
+                TopN = cbTop.SelectedIndex switch { 1 => 20, 2 => 50, _ => 10 },
+                Criterio = cbCriterio.SelectedIndex == 1 ? CriterioRanking.Recaudacion : CriterioRanking.Unidades,
+                ExcluirConsumidorFinal = chkExcluirConsumidorFinal.Checked,
+                DescripcionFiltros = filtros.Count > 0 ? string.Join(" · ", filtros) : null,
+            };
+        }
+
+        private void LimpiarFiltros()
+        {
+            inicializando = true;
+            foreach (var combo in new[] { cbMedioPago, cbCategoria, cbProveedor })
+                if (combo.Items.Count > 0) combo.SelectedIndex = 0;
+            cbTop.SelectedIndex = 0;
+            cbCriterio.SelectedIndex = 0;
+            chkExcluirConsumidorFinal.Checked = true;
+            SeleccionarRango(Rango.EsteMes);
+            AplicarRango(Rango.EsteMes);
+            inicializando = false;
+            ProgramarRegeneracion();
+        }
+
+        #endregion
+
+        #region Generación (asíncrona y cancelable)
+
+        private async Task GenerarAsync()
+        {
+            if (inicializando || !btnGenerar.Visible) return;
+            timerRegenerar.Stop();
+
+            if (dtpHasta.Value.Date < dtpDesde.Value.Date)
+            {
+                lblDescripcion.Text = "La fecha \"hasta\" no puede ser anterior a \"desde\".";
+                lblDescripcion.ForeColor = Color.Firebrick;
+                return;
+            }
+
+            // Si había un reporte en curso (el usuario cambió un filtro), se cancela: sólo se muestra el último pedido.
+            ctsReporte?.Cancel();
+            ctsReporte = CancellationTokenSource.CreateLinkedTokenSource(ctsFormulario.Token);
+            var token = ctsReporte.Token;
+            var parametros = ArmarParametros();
+
+            MostrarCargando(true, "Generando reporte...");
+            try
+            {
+                var resultado = await servicio.GenerarAsync(parametros, token);
+                if (token.IsCancellationRequested) return;
+                Mostrar(resultado);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                ManejadorErrores.Mostrar(this, ex, "No se pudo generar el reporte.");
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested) MostrarCargando(false);
+            }
+        }
+
+        private void Mostrar(ResultadoReporte r)
+        {
+            ultimo = r;
+            lblDescripcion.ForeColor = SystemColors.ControlText;
+            lblDescripcion.Text = $"{r.Titulo}   ·   {r.Descripcion}   ·   {r.Filas.Count} fila(s)   ·   Generado {r.Generado:HH:mm:ss}";
+            MostrarKpis(r.Kpis);
+            MostrarGrilla(r);
+            MostrarGraficos(r.Graficos);
+            btnExcel.Enabled = btnPdf.Enabled = true;
+        }
+
+        /// <summary>Tarjetas de KPI: hasta 4; las que el reporte no usa se ocultan y el resto se reparte el ancho.</summary>
+        private void MostrarKpis(List<KpiDTO> kpis)
+        {
+            var tarjetas = Tarjetas;
+            tlpKpis.SuspendLayout();
+            for (int i = 0; i < tarjetas.Length; i++)
+            {
+                var (tarjeta, titulo, valor, detalle) = tarjetas[i];
+                bool visible = i < kpis.Count;
+                tarjeta.Visible = visible;
+                tlpKpis.ColumnStyles[i].Width = visible ? 100f / Math.Max(1, Math.Min(4, kpis.Count)) : 0;
+                if (!visible) continue;
+
+                tarjeta.BackColor = ColoresKpi[i];
+                foreach (var l in new[] { titulo, valor, detalle }) { l.ForeColor = Color.White; l.BackColor = Color.Transparent; }
+                titulo.Text = kpis[i].Titulo.ToUpper();
+                valor.Text = ExportadorReportes.FormatearValor(kpis[i].Valor, kpis[i].Formato);
+                detalle.Text = kpis[i].Detalle ?? string.Empty;
+            }
+            tlpKpis.ResumeLayout();
+        }
+
+        /// <summary>Columnas explícitas según el reporte, con formato estricto y ordenamiento por clic en el encabezado.</summary>
+        private void MostrarGrilla(ResultadoReporte r)
+        {
+            dgvReporte.SuspendLayout();
+            dgvReporte.DataSource = null;
+            dgvReporte.Columns.Clear();
+
+            foreach (var c in r.Columnas)
+            {
+                var columna = new DataGridViewTextBoxColumn
+                {
+                    Name = c.Propiedad,
+                    DataPropertyName = c.Propiedad,
+                    HeaderText = c.Encabezado,
+                    FillWeight = c.Peso,
+                    MinimumWidth = 40,
+                    SortMode = DataGridViewColumnSortMode.Automatic,
+                };
+                columna.DefaultCellStyle.Format = c.Formato switch
+                {
+                    FormatoValor.Moneda => "C2",
+                    FormatoValor.Entero => "N0",
+                    FormatoValor.Decimal => "N1",
+                    FormatoValor.Porcentaje => "P1",
+                    FormatoValor.Fecha => "dd/MM/yyyy",
+                    _ => string.Empty,
+                };
+                if (c.Formato is FormatoValor.Moneda or FormatoValor.Entero or FormatoValor.Decimal or FormatoValor.Porcentaje)
+                    columna.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                dgvReporte.Columns.Add(columna);
+            }
+
+            dgvReporte.DataSource = ListaOrdenable.Crear(r.TipoFila, r.Filas);
+            dgvReporte.ResumeLayout();
+        }
+
+        private void MostrarGraficos(List<GraficoReporte> definiciones)
+        {
+            for (int i = 0; i < graficos.Length; i++)
+            {
+                bool visible = i < definiciones.Count;
+                graficos[i].Visible = visible;
+                if (visible)
+                    GraficosReporte.Dibujar(graficos[i].Plot, definiciones[i]);
+                graficos[i].Refresh();
+            }
+
+            // Con un solo gráfico, que ocupe toda la pestaña; con dos, uno arriba y otro abajo a todo el ancho.
+            tlpGraficos.RowStyles[1].Height = definiciones.Count > 1 ? 50 : 0;
+            tlpGraficos.SetColumnSpan(graficos[1], definiciones.Count == 2 ? 2 : 1);
+        }
+
+        private void MostrarCargando(bool visible, string texto = "")
+        {
+            ocupado = visible;
+            lblCargando.Text = texto;
+            panelCargando.Visible = visible;
+            if (visible) { CentrarPanelCargando(); panelCargando.BringToFront(); }
+            panelParametros.Enabled = !visible;
+            UseWaitCursor = visible;
+        }
+
+        private void CentrarPanelCargando()
+        {
+            panelCargando.Location = new Point(
+                Math.Max(0, (ClientSize.Width - panelCargando.Width) / 2),
+                Math.Max(0, tabResultados.Top + (tabResultados.Height - panelCargando.Height) / 2));
+        }
+
+        #endregion
+
+        #region Exportación
+
+        private async Task ExportarAsync(bool pdf)
+        {
+            if (ultimo is not ResultadoReporte r || ocupado) return;
+
+            using var dialogo = new SaveFileDialog
+            {
+                Filter = pdf ? "Documento PDF|*.pdf" : "Libro de Excel|*.xlsx",
+                FileName = $"{Archivo(r.Titulo)}_{DateTime.Now:yyyyMMdd_HHmm}.{(pdf ? "pdf" : "xlsx")}",
+            };
+            if (dialogo.ShowDialog(this) != DialogResult.OK) return;
+
+            MostrarCargando(true, pdf ? "Generando PDF..." : "Generando Excel...");
+            try
+            {
+                // Imágenes de los gráficos y escritura del archivo fuera del hilo de UI.
+                string ruta = dialogo.FileName;
+                await Task.Run(() =>
+                {
+                    var imagenes = r.Graficos.Select(g => GraficosReporte.Imagen(g)).ToList();
+                    if (pdf) ExportadorReportes.ExportarPdf(r, ruta, imagenes);
+                    else ExportadorReportes.ExportarExcel(r, ruta, imagenes);
+                });
+
+                if (MessageBox.Show(this, $"Reporte exportado:\n{ruta}\n\n¿Abrirlo ahora?", "Exportación completa",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ruta) { UseShellExecute = true });
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show(this, $"No se pudo escribir el archivo. ¿Está abierto en otro programa?\n\n{ex.Message}", "Exportar",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al generar reportes: " + ex.Message);
+                ManejadorErrores.Mostrar(this, ex, "No se pudo exportar el reporte.");
             }
-        }
-
-        private void generarReporteGeneros(DateTime desde, DateTime hasta)
-        {
-            cacheVentasPorGenero = ControladoraReportes.Instancia.ObtenerVentasPorGenero(desde, hasta);
-            dgvGeneros.DataSource = null;
-            dgvGeneros.DataSource = cacheVentasPorGenero;
-            DibujarGraficoVentasPorGenero();
-        }
-        private void generarReporteLibrosMasVendidos(DateTime desde, DateTime hasta)
-        {
-            cacheLibrosMasVendidos = ControladoraReportes.Instancia.ObtenerLibrosMasVendidos(desde, hasta);
-            dgvLibrosVendidos.DataSource = null;
-            dgvLibrosVendidos.DataSource = cacheLibrosMasVendidos;
-            dgvLibrosVendidos.Columns["IngresoGenerado"].DefaultCellStyle.Format = "N2";
-            DibujarGraficoLibrosMasVendidos();
-        }
-        private void generarReporteIngresos(DateTime desde, DateTime hasta)
-        {
-            cacheIngresos = ControladoraReportes.Instancia.ObtenerIngresos(desde, hasta);
-            dgvIngresos.DataSource = null;
-            dgvIngresos.DataSource = cacheIngresos;
-            dgvIngresos.Columns["TotalIngresos"].DefaultCellStyle.Format = "N2";
-            DibujarGraficoIngresos();
-        }
-
-        private void DibujarGraficoIngresos()
-        {
-            plotIngresos.Plot.Clear();
-
-            double[] valores = cacheIngresos
-                .Select(i => (double)i.TotalIngresos)
-                .ToArray();
-
-            string[] etiquetas = cacheIngresos
-            .Select(x => $"{x.MesNumero:D2}/{x.Año}")
-            .ToArray();
-
-            var bars = plotIngresos.Plot.Add.Bars(valores);
-
-            plotIngresos.Plot.Title("Ingresos por Mes");
-            plotIngresos.Plot.Axes.Bottom.TickGenerator =
-                new ScottPlot.TickGenerators.NumericManual(
-                    Enumerable.Range(0, etiquetas.Length)
-                              .Select(i => (double)i)
-                              .ToArray(),
-                    etiquetas);
-
-            plotIngresos.Plot.Axes.AutoScale();
-
-            plotIngresos.Refresh();
-        }
-        private void DibujarGraficoLibrosMasVendidos()
-        {
-            plotLibrosMasVendidos.Plot.Clear();
-
-            double[] valores = cacheLibrosMasVendidos
-                .Select(x => (double)x.CantidadVendida)
-                .ToArray();
-
-            string[] etiquetas = cacheLibrosMasVendidos
-                .Select(x => x.Titulo.Length > 20
-                    ? x.Titulo.Substring(0, 20) + "..."
-                    : x.Titulo)
-                .ToArray();
-
-            plotLibrosMasVendidos.Plot.Add.Bars(valores);
-
-            plotLibrosMasVendidos.Plot.Title("Top 10 Libros Más Vendidos");
-
-            plotLibrosMasVendidos.Plot.Axes.Bottom.TickGenerator =
-                new ScottPlot.TickGenerators.NumericManual(
-                    Enumerable.Range(0, etiquetas.Length)
-                              .Select(i => (double)i)
-                              .ToArray(),
-                    etiquetas);
-
-            plotLibrosMasVendidos.Plot.Axes.AutoScale();
-
-            plotLibrosMasVendidos.Refresh();
-        }
-
-        private void DibujarGraficoVentasPorGenero()
-        {
-            plotVentasPorGenero.Plot.Clear();
-
-            List<PieSlice> porciones = new();
-
-            ScottPlot.Color[] colores =
+            finally
             {
-                ScottPlot.Color.FromHex("#5C6B73"),
-                ScottPlot.Color.FromHex("#7B8C95"),
-                ScottPlot.Color.FromHex("#A7B4BC"),
-                ScottPlot.Color.FromHex("#D9D2B0"),
-                ScottPlot.Color.FromHex("#C6A969"),
-                ScottPlot.Color.FromHex("#8A817C")
-            };
-
-            int i = 0;
-
-            foreach (var item in cacheVentasPorGenero)
-            {
-                porciones.Add(new PieSlice
-                {
-                    Value = item.CantidadVendida,
-                    Label = item.Genero,
-                    FillColor = colores[i % colores.Length],
-                    LegendText = $"{item.Genero}: {item.CantidadVendida} libros"
-                });
-
-                i++;
+                MostrarCargando(false);
             }
 
-            var pie = plotVentasPorGenero.Plot.Add.Pie(porciones);
-
-            pie.SliceLabelDistance = 1.3;
-
-            plotVentasPorGenero.Plot.Title("Ventas por Género");
-
-            plotVentasPorGenero.Plot.HideGrid();
-
-            plotVentasPorGenero.Plot.Axes.Bottom.TickGenerator =
-                new ScottPlot.TickGenerators.EmptyTickGenerator();
-
-            plotVentasPorGenero.Plot.Axes.Left.TickGenerator =
-                new ScottPlot.TickGenerators.EmptyTickGenerator();
-
-            plotVentasPorGenero.Plot.Axes.AutoScale();
-
-            plotVentasPorGenero.Refresh();
+            static string Archivo(string titulo) =>
+                new string(titulo.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()).Trim('_');
         }
 
-        private void btnExportar_Click(object sender, EventArgs e)
+        #endregion
+
+        private void Salir()
         {
-
-            SaveFileDialog save = new SaveFileDialog();
-            save.FileName = $"Reporte_Libreria_{DateTime.Now:yyyyMMdd}.pdf";
-            save.Filter = "PDF Files|*.pdf";
-
-            if (save.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                    DateTime fechaDesde = dtpDesde.Value.Date;
-                    DateTime fechaHasta = dtpHasta.Value.Date.AddDays(1).AddSeconds(-1);
-
-                    // DATOS
-                    var ingresosPorMes = ControladoraReportes.Instancia.ObtenerIngresos(fechaDesde, fechaHasta);
-                    var librosMasVendidos = ControladoraReportes.Instancia.ObtenerLibrosMasVendidos(fechaDesde, fechaHasta);
-                    var ventasPorGenero = ControladoraReportes.Instancia.ObtenerVentasPorGenero(fechaDesde, fechaHasta);
-
-                    // IMÁGENES DE LOS GRÁFICOS
-                    byte[] imgIngresos = GenerarImagenIngresos(ingresosPorMes);
-                    byte[] imgLibrosMasVendidos = GenerarImagenLibrosMasVendidos(librosMasVendidos);
-                    byte[] imgVentasPorGenero = GenerarImagenVentasPorGenero(ventasPorGenero);
-
-                    // EXPORTAR PDF
-                    GenerarPDF.ExportarReporteCompleto(
-                        save.FileName,
-                        fechaDesde,
-                        fechaHasta,
-
-                        imgIngresos,
-                        ingresosPorMes,
-
-                        imgLibrosMasVendidos,
-                        librosMasVendidos,
-
-                        imgVentasPorGenero,
-                        ventasPorGenero
-                    ); 
-
-                    MessageBox.Show("Reporte exportado exitosamente.");
-
-                    try
-                    {
-                        System.Diagnostics.Process.Start("explorer.exe", save.FileName);
-                    }
-                    catch { }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Error: " + ex.Message);
-                }
-            }
-        }
-
-        private byte[] GenerarImagenIngresos(List<Reportes.ReporteIngresos> datos)
-        {
-            ScottPlot.Plot plot = new();
-
-            List<Bar> barras = new();
-            double[] posiciones = new double[datos.Count];
-            string[] etiquetas = new string[datos.Count];
-
-            int i = 0;
-
-            foreach (var item in datos)
-            {
-                barras.Add(new Bar
-                {
-                    Position = i,
-                    Value = (double)item.TotalIngresos,
-                    FillColor = ScottPlot.Color.FromHex("#5C6B73"),
-                    Label = $"${item.TotalIngresos:N0}"
-                });
-
-                posiciones[i] = i;
-                etiquetas[i] = item.MesNumero.ToString();
-                i++;
-            }
-
-            plot.Add.Bars(barras);
-
-            plot.Axes.Bottom.TickGenerator =
-                new ScottPlot.TickGenerators.NumericManual(posiciones, etiquetas);
-
-            plot.Title("Ingresos por Mes");
-
-            plot.Grid.MajorLineColor = ScottPlot.Colors.Transparent;
-            plot.Axes.AutoScale();
-
-            return plot.GetImage(600, 400).GetImageBytes();
-        }
-
-        private byte[] GenerarImagenLibrosMasVendidos(List<Reportes.ReporteLibroMasVendido> datos)
-        {
-            ScottPlot.Plot plot = new();
-
-            if (datos.Count == 0)
-                return plot.GetImage(600, 400).GetImageBytes();
-
-            var datosDibujo = datos
-                .OrderBy(x => x.CantidadVendida)
-                .ToList();
-
-            List<Bar> barras = new();
-
-            double[] posiciones = new double[datosDibujo.Count];
-            string[] etiquetas = new string[datosDibujo.Count];
-
-            int i = 0;
-
-            foreach (var item in datosDibujo)
-            {
-                barras.Add(new Bar
-                {
-                    Position = i,
-                    Value = item.CantidadVendida,
-                    FillColor = ScottPlot.Color.FromHex("#4F6D8A"),
-                    Label = item.CantidadVendida.ToString()
-                });
-
-                posiciones[i] = i;
-                etiquetas[i] = item.Titulo;
-                i++;
-            }
-
-            var barPlot = plot.Add.Bars(barras);
-
-            barPlot.Horizontal = true;
-
-            plot.Axes.Left.TickGenerator =
-                new ScottPlot.TickGenerators.NumericManual(posiciones, etiquetas);
-
-            plot.Grid.MajorLineColor = ScottPlot.Colors.Transparent;
-
-            plot.Title("Libros Más Vendidos");
-
-            plot.Axes.AutoScale();
-
-            return plot.GetImage(600, 400).GetImageBytes();
-        }
-
-        private byte[] GenerarImagenVentasPorGenero(List<Reportes.ReporteVentasPorGenero> datos)
-        {
-            ScottPlot.Plot plot = new();
-
-            List<PieSlice> porciones = new();
-
-            ScottPlot.Color[] colores =
-            {
-                ScottPlot.Color.FromHex("#5C6B73"),
-                ScottPlot.Color.FromHex("#7B8C95"),
-                ScottPlot.Color.FromHex("#A7B4BC"),
-                ScottPlot.Color.FromHex("#D9D2B0"),
-                ScottPlot.Color.FromHex("#C6A969"),
-                ScottPlot.Color.FromHex("#8A817C")
-            };
-
-            int i = 0;
-
-            foreach (var item in datos)
-            {
-                porciones.Add(new PieSlice
-                {
-                    Value = item.CantidadVendida,
-                    Label = item.Genero,
-                    FillColor = colores[i % colores.Length],
-                    LegendText = $"{item.Genero}: {item.CantidadVendida} libros"
-                });
-
-                i++;
-            }
-
-            var pie = plot.Add.Pie(porciones);
-
-            pie.SliceLabelDistance = 1.3;
-
-            plot.Title("Ventas por Género");
-
-            plot.HideGrid();
-
-            plot.Axes.Bottom.TickGenerator =
-                new ScottPlot.TickGenerators.EmptyTickGenerator();
-
-            plot.Axes.Left.TickGenerator =
-                new ScottPlot.TickGenerators.EmptyTickGenerator();
-
-            plot.Axes.AutoScale();
-
-            return plot.GetImage(600, 400).GetImageBytes();
-        }
-
-        private void btnSalir_Click(object sender, EventArgs e)
-        {
-            FrmMenu principal = Application.OpenForms["FrmMenu"] as FrmMenu;
-
-            if (principal != null)
-            {
+            if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
                 principal.MostrarInicio();
-            }
-
-            this.Close();
+            Close();
         }
-
-        
-
     }
-
 }
