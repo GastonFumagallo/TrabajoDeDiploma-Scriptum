@@ -28,7 +28,7 @@ Severidad: 🔴 crítica · 🟠 alta · 🟡 media.
 | 2 | 🔴 | Claves temporales de **5 dígitos con `Random`** y `Next(0, 9)`, que nunca genera el 9: solo 59.049 combinaciones posibles. | ✅ 10 caracteres con `RandomNumberGenerator` (~57 bits de entropía). |
 | 3 | 🔴 | **Sin bloqueo por intentos fallidos**: fuerza bruta ilimitada. | ✅ 5 intentos → 15 minutos de bloqueo. El reseteo de un administrador desbloquea. |
 | 4 | 🔴 | **Recuperación de clave sin verificación**: con solo saber el usuario y el email de otro se le cambiaba la clave y quedaba sin acceso. | ✅ La clave temporal convive con la actual, vence a los 30 minutos y se invalida con cualquier login correcto. |
-| 5 | 🔴 | **Escalada de privilegios renombrando un grupo**: ser administrador depende de que el grupo se llame "Administrador", y `ModificarGrupo` no validaba nombres. Quien pudiera editar grupos podía dar acceso total a cualquier grupo. | ✅ El grupo Administrador no se renombra, no se deshabilita ni se elimina, y ningún otro grupo puede tomar ese nombre. Un grupo deshabilitado ya no otorga permisos de administrador. |
+| 5 | 🔴 | **Escalada de privilegios renombrando un grupo**: ser administrador depende de que el grupo se llame "Administrador", y `ModificarGrupo` no validaba nombres. Quien pudiera editar grupos podía dar acceso total a cualquier grupo. | ✅ El grupo Administrador no se renombra, no se deshabilita ni se elimina, y ningún otro grupo puede tomar ese nombre (además, índice único en `GRU_Nombre`). Un grupo deshabilitado ya no otorga permisos de administrador. |
 | 6 | 🔴 | **Borrar un usuario borraba su historial de sesiones** (FK en cascada). | ✅ Baja lógica (estado "Inactivo") y FK `Restrict`. |
 | 7 | 🟠 | El **hash se mostraba en la grilla** de usuarios (`UsuarioDTO.Clave`) y quedaba en memoria toda la sesión. | ✅ Se quitó del DTO. Los usuarios que devuelve la controladora salen sin hashes. |
 | 8 | 🟠 | Las **altas y los reseteos no exigían cambiar la clave** temporal recibida por email. | ✅ `USU_DebeCambiarClave`: no se entra sin elegir una clave propia. |
@@ -41,6 +41,8 @@ Severidad: 🔴 crítica · 🟠 alta · 🟡 media.
 | 15 | 🟡 | `FrmCambiarClave` mostraba las claves en texto visible y comparaba contra el hash guardado en memoria. | ✅ Campos con `UseSystemPasswordChar`. La verificación se hace en la controladora. |
 | 16 | 🟡 | El texto de ayuda "CONTRASEÑA" se enviaba como clave y sumaba intentos fallidos. | ✅ Se filtra antes de llamar al login. |
 | 17 | 🟡 | Los mensajes de recuperación y login revelaban qué usuarios existen. | ✅ Mensajes genéricos. El login con un usuario inexistente tarda lo mismo que con uno real. |
+| 18 | 🟡 | "Grupo activo" se decidía de tres formas distintas: `EST_GRU_ID == 1` (login y `PermisoService`) y un estado "Deshabilitado" que no existía (`Usuario.getAllGruposActivos`). No había forma de deshabilitar un grupo. | ✅ `Grupo.EstaActivo` (por nombre: `Estado_Grupo.Activo`) en todos lados, y la migración `GestionGrupos` crea el estado "Inactivo". |
+| 19 | 🟡 | En `FrmGrupo`, marcar un módulo o formulario en el árbol **no guardaba nada** (sin `AfterCheck`; se leían solo las hojas). Eliminar un grupo no pedía confirmación. | ✅ Gestión de grupos master-detail sobre `GrupoService` (ver abajo). |
 | — | ✅ | **Inyección SQL**: todo pasa por LINQ (parametrizado). El único SQL manual (`FromSqlInterpolated` en `OrdenReposicionService`) también se parametriza. | Sin cambios. |
 
 ## Checklist para cualquier cambio de seguridad
@@ -112,3 +114,21 @@ public void AnularVenta(int ventaId, string motivo)
 ```bash
 dotnet ef database update --project Modelo --startup-project Vista
 ```
+
+`20261004192520_GestionGrupos`:
+- Recorta espacios y depura nombres de grupo duplicados (el de menor ID conserva el nombre; los demás quedan como `Nombre (ID)`).
+- Crea los estados de grupo "Activo" e "Inactivo" si faltan.
+- Agrega el índice único en `GRU_Nombre`.
+
+## Gestión de grupos
+
+`FrmGestionarGrupos` es master-detail (listado con búsqueda en vivo a la izquierda; ficha con árbol de permisos y usuarios del grupo a la derecha) y no usa `DbContext`: todo pasa por `GrupoService` (`Controladora/Seguridad`), que concentra las reglas:
+
+- `PermisoService.Exigir` en alta (`AgregarGrupo`), modificación (`ModificarGrupo`) y eliminación (`EliminarGrupo`).
+- Grupo Administrador: no se renombra, no se deshabilita, no se elimina y su nombre está reservado; sólo se edita la descripción.
+- Nadie cambia las acciones de un grupo al que pertenece (la ficha muestra el árbol en sólo lectura y el servicio lo rechaza).
+- Nombre único en alta y modificación; las acciones se sincronizan por ID (sólo cambian las filas de `AccionGrupo` que difieren).
+- Eliminar sólo grupos sin usuarios, en una transacción serializable; si tiene usuarios, se propone deshabilitarlo.
+- Altas, cambios y bajas quedan en `AuditoriaSeguridad`.
+
+El árbol (`Vista/Comun/ArbolPermisos`) guarda la selección en un `HashSet` (filtrar o recargar no la pierde), propaga padre/hijos, muestra el conteo por nodo y corrige el doble clic del TreeView nativo.

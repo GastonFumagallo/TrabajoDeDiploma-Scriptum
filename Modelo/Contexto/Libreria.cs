@@ -61,6 +61,12 @@ namespace Modelo.Contexto
             modelBuilder.Entity<AuditoriaSeguridad>()
                 .HasIndex(a => a.AUD_Fecha);
 
+            // El nombre del grupo es único: además de evitar duplicados, impide que otro grupo se llame
+            // "Administrador" y herede el acceso total que PermisoService le da a ese nombre.
+            modelBuilder.Entity<Grupo>()
+                .HasIndex(g => g.GRU_Nombre)
+                .IsUnique();
+
             // Clientes y proveedores: PER_ID es la FK real hacia Persona (antes EF usaba columnas sombra).
             modelBuilder.Entity<Cliente>()
                 .HasOne(c => c.CLI_Persona)
