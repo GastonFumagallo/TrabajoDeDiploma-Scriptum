@@ -60,7 +60,7 @@ namespace Modelo.Seguridad
             var accionExistente = Acciones.FirstOrDefault(x => x.ACC_ID == accion.ACC_ID);
             if (accionExistente != null)
             {
-                Acciones.Remove(accion);
+                Acciones.Remove(accionExistente);
                 return true;
             }
             else

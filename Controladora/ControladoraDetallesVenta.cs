@@ -25,7 +25,8 @@ namespace Controladora
 
         public List<DetalleVentaDTO> BuscarDetalles(int ventaID)
         {
-            return Libreria.Contexto.DetallesVenta.Include(d => d.DV_Libro).Where(d => d.DV_Venta.VEN_ID == ventaID)
+            using var db = new Libreria();
+            return db.DetallesVenta.AsNoTracking().Where(d => d.VEN_ID == ventaID)
                 .Select(d => new DetalleVentaDTO
                 {
                     DVDTO_ID = d.DV_ID,

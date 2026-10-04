@@ -44,7 +44,7 @@ namespace Modelo.Seguridad
             var ac = Acciones.FirstOrDefault(x => x.ACC_ID == accion.ACC_ID);
             if (ac == null)
             {
-                var accionGrupo = Grupos.FirstOrDefault(x => x.Acciones.Contains(accion));
+                var accionGrupo = Grupos.FirstOrDefault(x => x.Acciones.Any(a => a.ACC_ID == accion.ACC_ID));
                 if (accionGrupo == null)
                 {
                     Acciones.Add(accion);
@@ -61,7 +61,7 @@ namespace Modelo.Seguridad
             var ac = Acciones.FirstOrDefault(x => x.ACC_ID == accion.ACC_ID);
             if (ac != null)
             {
-                Acciones.Remove(accion);
+                Acciones.Remove(ac);
                 ok = true;
 
             }
@@ -74,7 +74,7 @@ namespace Modelo.Seguridad
             var grupoExistente = Grupos.FirstOrDefault(x => x.GRU_ID == grupo.GRU_ID);
             if (grupoExistente != null) return false;
 
-            var accionesPersonalizadas = Acciones.Where(x => grupo.Acciones.Contains(x)).ToList();
+            var accionesPersonalizadas = Acciones.Where(x => grupo.Acciones.Any(a => a.ACC_ID == x.ACC_ID)).ToList();
             if (accionesPersonalizadas.Any())
             {
                 foreach (var accion in accionesPersonalizadas)

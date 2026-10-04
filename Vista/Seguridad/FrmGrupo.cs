@@ -44,7 +44,8 @@ namespace Vista.Seguridad
         {
             txtNombre.Text = grupo.GRU_Nombre.ToString();
             txtDescripcion.Text = grupo.GRU_Descripcion.ToString();
-            cbEstados.SelectedItem = grupo.Estado_Grupo;
+            // Los estados vienen de otra consulta (otras instancias): se selecciona por ID.
+            cbEstados.SelectedItem = cbEstados.Items.Cast<Estado_Grupo>().FirstOrDefault(e => e.EST_GRU_ID == grupo.EST_GRU_ID);
         }
 
         void LlenarAcciones()
