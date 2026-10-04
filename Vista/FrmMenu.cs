@@ -199,7 +199,7 @@ namespace Vista
             if (IsDisposed) return;
             sesionExpirada = true;
 
-            // Un diálogo modal abierto (p. ej. FrmUsuario) impediría que el menú se cierre.
+            // Un diálogo modal abierto (p. ej. FrmEditarUsuario) impediría que el menú se cierre.
             foreach (var modal in Application.OpenForms.Cast<Form>().Where(f => f != this && f.Modal).ToList())
                 modal.Close();
 
@@ -253,6 +253,14 @@ namespace Vista
         private void btnVentas_Click(object sender, EventArgs e) => Navegar<FrmGestionarVentas>();
         private void btnReportes_Click(object sender, EventArgs e) => Navegar<FrmGestionarReportes>();
         private void btnGestionarInventario_Click(object sender, EventArgs e) => Navegar<FrmGestionarInventario>();
+
+        /// <summary>Cambio voluntario de la propia clave (exige la actual).</summary>
+        private void btnMiClave_Click(object sender, EventArgs e)
+        {
+            if (Sesion.Instancia.Usuario is not { } usuario) return;
+            using var form = new FrmCambiarClave(usuario.USU_ID);
+            form.ShowDialog(this);
+        }
         private void btnUsuarios_Click(object sender, EventArgs e) => Navegar<FrmGestionarUsuarios>();
         private void btnGrupos_Click(object sender, EventArgs e) => Navegar<FrmGestionarGrupos>();
 

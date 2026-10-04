@@ -45,9 +45,11 @@ namespace Controladora
 
             CerrarSesionesAbandonadas(usuario.USU_ID);
 
+            // Se vincula por la FK y no por la navegación: el usuario viene desconectado y, adjuntándolo,
+            // EF intentaría insertarlo junto con sus grupos y acciones.
             var auditoria = new AuditoriaSesion
             {
-                AS_USU_ID = usuario.USU_ID,   // antes guardaba el ID de la persona
+                AS_USU_ID = usuario.USU_ID,
                 AS_FechaHoraLogin = DateTime.Now,
                 AS_SesionActiva = true
             };
@@ -55,9 +57,6 @@ namespace Controladora
             using (var db = new Libreria())
             {
                 db.AuditoriaSesiones.Add(auditoria);
-                // Se vincula por la FK (sombra) y no por la navegación: el usuario viene desconectado
-                // y, adjuntándolo, EF intentaría insertarlo junto con sus grupos y acciones.
-                db.Entry(auditoria).Property("AS_UsuarioUSU_ID").CurrentValue = usuario.USU_ID;
                 db.SaveChanges();
             }
 

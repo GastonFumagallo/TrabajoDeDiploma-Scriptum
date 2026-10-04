@@ -51,11 +51,22 @@ namespace Modelo.Contexto
                 .HasIndex(u => u.USU_Nombre)
                 .IsUnique();
 
-            // Borrar un usuario no puede borrar su historial de sesiones (antes era Cascade).
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.USU_Mail)
+                .IsUnique();
+
+            // Usuarios: PER_ID es la FK real hacia Persona (antes EF usaba la columna sombra USU_PersonaPER_ID).
+            modelBuilder.Entity<Usuario>()
+                .HasOne(u => u.USU_Persona)
+                .WithMany(p => p.Usuarios)
+                .HasForeignKey(u => u.PER_ID);
+
+            // Borrar un usuario no puede borrar su historial de sesiones (antes era Cascade). AS_USU_ID es la FK
+            // real (antes se guardaba aparte de la columna sombra AS_UsuarioUSU_ID, con el mismo valor).
             modelBuilder.Entity<AuditoriaSesion>()
                 .HasOne(a => a.AS_Usuario)
                 .WithMany()
-                .HasForeignKey("AS_UsuarioUSU_ID")
+                .HasForeignKey(a => a.AS_USU_ID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<AuditoriaSeguridad>()

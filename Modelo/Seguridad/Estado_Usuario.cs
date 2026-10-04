@@ -8,6 +8,9 @@ namespace Modelo.Seguridad
 {
     public partial class Estado_Usuario
     {
+        /// <summary>Estados de usuario de sistema (se identifican por nombre). "Inactivo" es la baja lógica.</summary>
+        public const string Activo = "Activo";
+        public const string Inactivo = "Inactivo";
 
 
         [Key]

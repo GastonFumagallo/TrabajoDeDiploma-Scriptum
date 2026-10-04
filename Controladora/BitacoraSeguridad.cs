@@ -16,6 +16,8 @@ namespace Controladora
         public const string UsuarioCreado = "USUARIO_CREADO";
         public const string UsuarioModificado = "USUARIO_MODIFICADO";
         public const string UsuarioDadoDeBaja = "USUARIO_BAJA";
+        public const string UsuarioReactivado = "USUARIO_REACTIVADO";
+        public const string UsuarioDesbloqueado = "USUARIO_DESBLOQUEADO";
         public const string GrupoCreado = "GRUPO_CREADO";
         public const string GrupoModificado = "GRUPO_MODIFICADO";
         public const string GrupoEliminado = "GRUPO_ELIMINADO";
