@@ -155,7 +155,7 @@ namespace Vista.Comun
                 if (idActual is int id)
                     GrillaHelper.Seleccionar<TListado>(o.Grilla, x => o.Id(x) == id);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token)) { }
             catch (Exception ex)
             {
                 ManejadorErrores.Mostrar(form, ex, $"No se pudo cargar el listado de {o.EntidadPlural}.");
@@ -170,13 +170,25 @@ namespace Vista.Comun
             }
         }
 
-        /// <summary>Vuelve al estado inicial de filtros (los propios del formulario se limpian antes de llamarlo).</summary>
-        public async Task LimpiarFiltrosAsync()
+        /// <summary>Vuelve al estado inicial de filtros con una sola carga.</summary>
+        /// <param name="limpiarPropios">
+        /// Resetea los filtros propios del formulario (combos, casillas). Se ejecuta con las cargas suspendidas: así sus
+        /// eventos de cambio no disparan una consulta cada uno (que se cancelarían entre sí) y se carga una sola vez.
+        /// </param>
+        public async Task LimpiarFiltrosAsync(Action? limpiarPropios = null)
         {
             listo = false;
-            o.Buscar.Clear();
-            o.Estado.SelectedIndex = 1;
-            listo = true;
+            try
+            {
+                limpiarPropios?.Invoke();
+                o.Buscar.Clear();
+                timer.Stop();   // Clear() dispara la búsqueda diferida: la carga de abajo ya la cubre
+                o.Estado.SelectedIndex = 1;
+            }
+            finally
+            {
+                listo = true;
+            }
             await CargarAsync();
             o.Buscar.Focus();
         }

@@ -67,8 +67,7 @@ namespace Vista
             cbFiltroExtra.SelectedIndexChanged += async (_, _) => await listado.CargarAsync();
             btnLimpiarFiltros.Click += async (_, _) =>
             {
-                if (cbFiltroExtra.Items.Count > 0) cbFiltroExtra.SelectedIndex = 0;
-                await listado.LimpiarFiltrosAsync();
+                await listado.LimpiarFiltrosAsync(() => { if (cbFiltroExtra.Items.Count > 0) cbFiltroExtra.SelectedIndex = 0; });
             };
             btnSalir.Click += (_, _) => Salir();
         }

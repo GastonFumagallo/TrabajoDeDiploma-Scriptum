@@ -64,9 +64,11 @@ namespace Vista.Seguridad
             };
             btnLimpiarFiltros.Click += async (_, _) =>
             {
-                if (cbFiltroExtra.Items.Count > 0) cbFiltroExtra.SelectedIndex = 0;
-                chkSoloBloqueados.Checked = false;
-                await listado.LimpiarFiltrosAsync();
+                await listado.LimpiarFiltrosAsync(() =>
+                {
+                    if (cbFiltroExtra.Items.Count > 0) cbFiltroExtra.SelectedIndex = 0;
+                    chkSoloBloqueados.Checked = false;
+                });
             };
             btnResetearClave.Click += async (_, _) => await ResetearClaveAsync();
             btnDesbloquear.Click += async (_, _) => await DesbloquearAsync();
