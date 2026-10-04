@@ -71,11 +71,11 @@ namespace Vista.Seguridad
             btnGuardar.Click += async (_, _) => await GuardarAsync();
             btnDescartar.Click += async (_, _) => await DescartarAsync();
             btnEliminar.Click += async (_, _) => await EliminarAsync();
-            btnVolver.Click += async (_, _) => await VolverAsync();
+            btnVolver.Click += (_, _) => Volver();
 
             KeyDown += FrmGestionarGrupos_KeyDown;
             Load += FrmGestionarGrupos_Load;
-            FormClosing += (_, _) => { timerBusqueda.Stop(); ctsForm.Cancel(); };
+            FormClosing += FrmGestionarGrupos_FormClosing;
             Disposed += (_, _) =>
             {
                 timerBusqueda.Dispose();
@@ -509,12 +509,33 @@ namespace Vista.Seguridad
             }
         }
 
-        private async Task VolverAsync()
+        private void Volver()
         {
-            if (!await ConfirmarDescartarCambiosAsync()) return;
-            if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
-                principal.MostrarInicio();
-            Close();
+            if (TopLevelControl is FrmMenu principal)
+                principal.MostrarInicio();   // cierra y libera esta sección (FormClosing confirma si hay cambios)
+            else
+                Close();
+        }
+
+        /// <summary>
+        /// El menú cierra la sección al navegar a otra: si hay cambios sin guardar se pregunta y, si el usuario
+        /// quiere quedarse, se cancela el cierre (el menú lo respeta y no cambia de sección).
+        /// </summary>
+        private void FrmGestionarGrupos_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            if (hayCambios && ficha != null)
+            {
+                var nombre = string.IsNullOrWhiteSpace(txtNombre.Text) ? "el grupo nuevo" : $"\"{txtNombre.Text.Trim()}\"";
+                if (MessageBox.Show(this, $"Hay cambios sin guardar en {nombre}. ¿Descartarlos?", "Cambios sin guardar",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                hayCambios = false;
+            }
+            timerBusqueda.Stop();
+            ctsForm.Cancel();
         }
 
         /// <summary>Si hay cambios sin guardar, pregunta: Sí guarda, No descarta, Cancelar se queda. Devuelve si se puede seguir.</summary>
