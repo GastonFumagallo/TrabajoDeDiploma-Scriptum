@@ -43,6 +43,8 @@ namespace Vista.Comun
             public required Func<TListado, string> Descripcion { get; init; }
             /// <summary>Registros de sistema que no se pueden dar de baja ni editar (ej. Consumidor Final).</summary>
             public Func<TListado, bool>? Protegido { get; init; }
+            /// <summary>Si devuelve false, se puede editar pero no dar de baja/reactivar (ej. la propia cuenta).</summary>
+            public Func<TListado, bool>? PermiteCambiarEstado { get; init; }
 
             /// <summary>Consulta al servicio. Recibe texto y estado; los filtros propios del formulario se capturan en el lambda.</summary>
             public required Func<string, FiltroEstadoActivo, CancellationToken, Task<List<TListado>>> Cargar { get; init; }
@@ -115,6 +117,9 @@ namespace Vista.Comun
         }
 
         public CancellationToken Token => ctsForm.Token;
+        /// <summary>Se dispara cada vez que se recalculan los botones (cambio de fila o recarga): para botones propios del formulario.</summary>
+        public event EventHandler? AccionesActualizadas;
+
         public TListado? Seleccionado => o.Grilla.CurrentRow?.DataBoundItem as TListado;
         public IReadOnlyList<TListado> Filas => bs.DataSource as List<TListado> ?? new List<TListado>();
 
@@ -181,10 +186,11 @@ namespace Vista.Comun
             var item = Seleccionado;
             bool protegido = item != null && (o.Protegido?.Invoke(item) ?? false);
             o.Editar.Enabled = item != null && !protegido;
-            o.CambiarEstado.Enabled = item != null && !protegido;
+            o.CambiarEstado.Enabled = item != null && !protegido && (o.PermiteCambiarEstado?.Invoke(item) ?? true);
             o.CambiarEstado.Text = item != null && !o.Activo(item) ? "Reactivar (F4)" : "Dar de baja (F4)";
             if (o.Exportar != null) o.Exportar.Enabled = bs.Count > 0;
             if (o.Imprimir != null) o.Imprimir.Enabled = bs.Count > 0;
+            AccionesActualizadas?.Invoke(this, EventArgs.Empty);
         }
 
         private async Task NuevoAsync()

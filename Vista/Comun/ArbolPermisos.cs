@@ -22,6 +22,7 @@ namespace Vista.Comun
 
         private List<ModuloPermisosDTO> catalogo = new();
         private readonly HashSet<int> seleccion = new();
+        private readonly HashSet<int> heredados = new();
         private string filtro = "";
 
         public ArbolPermisos()
@@ -56,6 +57,21 @@ namespace Vista.Comun
             Reconstruir();
         }
 
+        /// <summary>
+        /// Permisos que ya da otra fuente (los grupos de un usuario): se ven marcados, en gris y "(por grupo)", y no se
+        /// pueden quitar. Si alguno estaba también en la selección directa, se saca de ella porque sería redundante.
+        /// </summary>
+        public void EstablecerHeredados(IEnumerable<int> accionIds)
+        {
+            heredados.Clear();
+            heredados.UnionWith(accionIds);
+            seleccion.ExceptWith(heredados);
+            Reconstruir();
+        }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int CantidadHeredados => heredados.Count;
+
         /// <summary>Muestra sólo lo que coincide con el texto (por módulo, formulario o acción). Lo marcado se conserva.</summary>
         public void Filtrar(string texto)
         {
@@ -68,7 +84,7 @@ namespace Vista.Comun
         {
             if (SoloLectura) return;
             var cambio = false;
-            foreach (var hoja in Hojas(Nodes))
+            foreach (var hoja in Hojas(Nodes).Where(h => !heredados.Contains((int)h.Tag!)))
                 cambio |= Aplicar((int)hoja.Tag!, marcado);
             if (!cambio) return;
             Reconstruir();
@@ -92,7 +108,16 @@ namespace Vista.Comun
                         var nodoForm = new TreeNode { Name = form.Nombre };
 
                         foreach (var accion in form.Acciones.Where(a => coincideForm || Coincide(a.Nombre)))
-                            nodoForm.Nodes.Add(new TreeNode(accion.Nombre) { Name = accion.Nombre, Tag = accion.Id, Checked = seleccion.Contains(accion.Id) });
+                        {
+                            var heredado = heredados.Contains(accion.Id);
+                            nodoForm.Nodes.Add(new TreeNode(heredado ? $"{accion.Nombre} (por grupo)" : accion.Nombre)
+                            {
+                                Name = accion.Nombre,
+                                Tag = accion.Id,
+                                Checked = heredado || seleccion.Contains(accion.Id),
+                                ForeColor = heredado ? SystemColors.GrayText : Color.Empty,
+                            });
+                        }
 
                         if (nodoForm.Nodes.Count > 0)
                             nodoModulo.Nodes.Add(nodoForm);
@@ -116,7 +141,8 @@ namespace Vista.Comun
 
         protected override void OnBeforeCheck(TreeViewCancelEventArgs e)
         {
-            if (SoloLectura && e.Action != TreeViewAction.Unknown)
+            var esUsuario = e.Action != TreeViewAction.Unknown;
+            if (esUsuario && (SoloLectura || e.Node?.Tag is int id && heredados.Contains(id)))
                 e.Cancel = true;
             base.OnBeforeCheck(e);
         }
@@ -138,8 +164,14 @@ namespace Vista.Comun
                 {
                     foreach (var hoja in Hojas(nodo.Nodes))
                     {
+                        var hojaId = (int)hoja.Tag!;
+                        if (heredados.Contains(hojaId))
+                        {
+                            hoja.Checked = true;   // lo da un grupo: no se puede quitar desde acá
+                            continue;
+                        }
                         hoja.Checked = nodo.Checked;
-                        Aplicar((int)hoja.Tag!, nodo.Checked);
+                        Aplicar(hojaId, nodo.Checked);
                     }
                     ActualizarDesdeHijos(nodo);
                 }

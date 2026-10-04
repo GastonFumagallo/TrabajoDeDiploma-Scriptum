@@ -1,10 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Modelo.Seguridad
 {
@@ -19,10 +17,12 @@ namespace Modelo.Seguridad
             Grupos = new HashSet<Grupo>();
         }
 
+        /// <summary>Nombre de inicio de sesión. Único y no editable: ventas, movimientos y órdenes lo guardan como texto.</summary>
         [StringLength(60)]
         public string USU_Nombre { get; set; }
 
-        [StringLength(64)]
+        /// <summary>Hash PBKDF2 (ver Servicios.HasherClaves). Nunca sale de la capa de servicio.</summary>
+        [StringLength(200)]
         public string USU_Clave { get; set; }
 
         [StringLength(60)]
@@ -37,95 +37,29 @@ namespace Modelo.Seguridad
         public virtual ICollection<Accion> Acciones { get; set; }
         public virtual ICollection<Grupo> Grupos { get; set; }
 
-       
-        public bool AgregarAccion(Accion accion)
-        {
-            var ok = false;
-            var ac = Acciones.FirstOrDefault(x => x.ACC_ID == accion.ACC_ID);
-            if (ac == null)
-            {
-                var accionGrupo = Grupos.FirstOrDefault(x => x.Acciones.Any(a => a.ACC_ID == accion.ACC_ID));
-                if (accionGrupo == null)
-                {
-                    Acciones.Add(accion);
-                    ok = true;
-                }
-            }
-            return ok;
-        }
+        /// <summary>La clave es temporal (alta o blanqueo): hay que cambiarla antes de entrar al sistema.</summary>
+        public bool USU_DebeCambiarClave { get; set; }
 
-        
-        public bool QuitarAccion(Accion accion)
-        {
-            var ok = false;
-            var ac = Acciones.FirstOrDefault(x => x.ACC_ID == accion.ACC_ID);
-            if (ac != null)
-            {
-                Acciones.Remove(ac);
-                ok = true;
+        /// <summary>Intentos fallidos consecutivos (login o código de recuperación).</summary>
+        public int USU_IntentosFallidos { get; set; }
 
-            }
-            return ok;
-        }
+        /// <summary>Bloqueo temporal por intentos fallidos; se levanta solo al vencer o lo desbloquea un administrador.</summary>
+        public DateTime? USU_BloqueadoHasta { get; set; }
 
+        public DateTime? USU_UltimoAcceso { get; set; }
 
-        public bool AgregarGrupo(Grupo grupo)
-        {
-            var grupoExistente = Grupos.FirstOrDefault(x => x.GRU_ID == grupo.GRU_ID);
-            if (grupoExistente != null) return false;
+        /// <summary>Hash del código de recuperación enviado por mail (la clave no cambia hasta usarlo).</summary>
+        [StringLength(200)]
+        public string? USU_CodigoRecuperacion { get; set; }
 
-            var accionesPersonalizadas = Acciones.Where(x => grupo.Acciones.Any(a => a.ACC_ID == x.ACC_ID)).ToList();
-            if (accionesPersonalizadas.Any())
-            {
-                foreach (var accion in accionesPersonalizadas)
-                {
-                    Acciones.Remove(accion);
-                }
-            }
+        public DateTime? USU_CodigoVence { get; set; }
 
-            Grupos.Add(grupo);
-            return true;
-        }
-
-
-        public bool QuitarGrupo(Grupo grupo)
-        {
-            var grupoExistente = Grupos.FirstOrDefault(x => x.GRU_ID == grupo.GRU_ID);
-            if (grupoExistente == null) return false;
-            else
-            {
-                Grupos.Remove(grupoExistente);
-            }
-            return true;
-        }
-
-        public ReadOnlyCollection<Grupo> getAllGruposActivos()
-        {
-            return Grupos.Where(x => x.EstaActivo).ToList().AsReadOnly();
-        }
-
-
-        public ReadOnlyCollection<Accion> getAllAcciones()
-        {
-            return Acciones.ToList().AsReadOnly();
-        }
+        [ConcurrencyCheck]
+        public int USU_Version { get; set; }
 
         public override string ToString()
         {
             return USU_Nombre.ToString();
         }
     }
-
-
-    public class UsuarioDTO
-    {
-        public int USUDTO_ID { get; set; }
-        public string NombrePersona { get; set; }
-        public string Usuario { get; set; }
-        public string Clave { get; set; }
-        public string Mail { get; set; }
-        public string Estado { get; set; }
-    }
-
-
 }

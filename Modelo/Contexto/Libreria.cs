@@ -51,6 +51,29 @@ namespace Modelo.Contexto
                 .HasIndex(g => g.GRU_Nombre)
                 .IsUnique();
 
+            // Usuarios: PER_ID es la FK real hacia Persona (antes EF usaba la columna sombra USU_PersonaPER_ID).
+            modelBuilder.Entity<Usuario>()
+                .HasOne(u => u.USU_Persona)
+                .WithMany(p => p.Usuarios)
+                .HasForeignKey(u => u.PER_ID);
+
+            // Nombre de inicio de sesión y email únicos.
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.USU_Nombre)
+                .IsUnique();
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.USU_Mail)
+                .IsUnique();
+
+            // Auditoría de sesiones: AS_USU_ID es la FK real (antes, columna sombra AS_UsuarioUSU_ID) y es Restrict:
+            // un usuario con historial de sesiones no se puede borrar físicamente (se desactiva).
+            modelBuilder.Entity<AuditoriaSesion>()
+                .HasOne(a => a.AS_Usuario)
+                .WithMany()
+                .HasForeignKey(a => a.AS_USU_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Clientes y proveedores: PER_ID es la FK real hacia Persona (antes EF usaba columnas sombra).
             modelBuilder.Entity<Cliente>()
                 .HasOne(c => c.CLI_Persona)

@@ -40,6 +40,7 @@
             panelSuperior = new Panel();
             button1 = new Button();
             pbLogo = new PictureBox();
+            lblInfo = new Label();
             panelSuperior.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbLogo).BeginInit();
             SuspendLayout();
@@ -51,6 +52,7 @@
             txtClaveActual.Name = "txtClaveActual";
             txtClaveActual.Size = new Size(324, 27);
             txtClaveActual.TabIndex = 2;
+            txtClaveActual.UseSystemPasswordChar = true;
             // 
             // txtConfirmar
             // 
@@ -58,7 +60,8 @@
             txtConfirmar.Margin = new Padding(5, 4, 5, 4);
             txtConfirmar.Name = "txtConfirmar";
             txtConfirmar.Size = new Size(324, 27);
-            txtConfirmar.TabIndex = 3;
+            txtConfirmar.TabIndex = 4;
+            txtConfirmar.UseSystemPasswordChar = true;
             // 
             // txtClaveNueva
             // 
@@ -66,7 +69,8 @@
             txtClaveNueva.Margin = new Padding(5, 4, 5, 4);
             txtClaveNueva.Name = "txtClaveNueva";
             txtClaveNueva.Size = new Size(324, 27);
-            txtClaveNueva.TabIndex = 4;
+            txtClaveNueva.TabIndex = 3;
+            txtClaveNueva.UseSystemPasswordChar = true;
             // 
             // btnCancelar
             // 
@@ -141,6 +145,7 @@
             button1.TabIndex = 18;
             button1.Text = "Cancelar";
             button1.UseVisualStyleBackColor = true;
+            button1.Click += btnCancelar_Click;
             // 
             // pbLogo
             // 
@@ -152,12 +157,21 @@
             pbLogo.TabIndex = 10;
             pbLogo.TabStop = false;
             // 
+            // lblInfo
+            // 
+            lblInfo.Location = new Point(14, 252);
+            lblInfo.Name = "lblInfo";
+            lblInfo.Size = new Size(340, 62);
+            lblInfo.TabIndex = 19;
+            lblInfo.Text = "Mínimo 10 caracteres. No puede contener tu usuario.";
+            // 
             // FrmCambiarClave
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(591, 319);
             ControlBox = false;
+            Controls.Add(lblInfo);
             Controls.Add(panelSuperior);
             Controls.Add(label3);
             Controls.Add(label2);
@@ -186,5 +200,6 @@
         private Panel panelSuperior;
         private Button button1;
         private PictureBox pbLogo;
+        private Label lblInfo;
     }
 }

@@ -32,6 +32,22 @@ namespace Servicios
 
             return FormsHabilitados.Contains(nombreFormulario);
         }
+        /// <summary>
+        /// Carga los permisos efectivos del usuario: acciones de sus grupos activos más sus acciones directas.
+        /// El usuario tiene que venir con Grupos (Estado_Grupo, Acciones.Formulario) y Acciones.Formulario cargados.
+        /// </summary>
+        public void IniciarSesion(Usuario usuario)
+        {
+            var acciones = usuario.Grupos.Where(g => g.EstaActivo).SelectMany(g => g.Acciones)
+                .Concat(usuario.Acciones)
+                .ToList();
+
+            UsuarioActual = usuario;
+            CargarPermisos(
+                acciones.Select(a => a.ACC_Nombre).Distinct().ToList(),
+                acciones.Where(a => a.Formulario != null).Select(a => a.Formulario.FORM_Nombre).Distinct().ToList());
+        }
+
         public void CargarPermisos(List<string> acciones, List<string> formularios)
         {
             Permisos = acciones;

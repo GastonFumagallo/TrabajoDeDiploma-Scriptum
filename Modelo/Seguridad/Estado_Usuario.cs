@@ -8,6 +8,9 @@ namespace Modelo.Seguridad
 {
     public partial class Estado_Usuario
     {
+        /// <summary>Estados de usuario de sistema (los inserta la migración GestionUsuarios). Se identifican por nombre.</summary>
+        public const string Activo = "Activo";
+        public const string Inactivo = "Inactivo";
 
 
         [Key]

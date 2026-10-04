@@ -1,6 +1,8 @@
 using Controladora;
+using Controladora.Seguridad;
 using Modelo.Seguridad;
 using Servicios;
+using Vista.Comun;
 using Vista.Seguridad;
 using static System.Collections.Specialized.BitVector32;
 
@@ -13,55 +15,74 @@ namespace Vista
             InitializeComponent();
 
         }
-        private void btnAceptar_Click(object sender, EventArgs e)
+        private bool ingresando;
+
+        private async void btnAceptar_Click(object sender, EventArgs e)
         {
-            if (txtClave.Text == string.Empty || txtUsuario.Text == string.Empty)
+            if (ingresando) return;
+            string usuario = txtUsuario.Text.Trim(), clave = txtClave.Text;
+            if (usuario.Length == 0 || usuario == "USUARIO" || clave.Length == 0 || (clave == "CONTRASEÑA" && !txtClave.UseSystemPasswordChar))
             {
-                MessageBox.Show("Debe completar todos los campos");
+                MessageBox.Show(this, "Debe completar todos los campos", "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
-            else
+
+            ingresando = true;
+            btnAceptar.Enabled = false;
+            UseWaitCursor = true;
+            try
             {
-                var Usuario = ControladoraUsuarios.Instancia.IniciarSesion(txtUsuario.Text, txtClave.Text);
-                if (Usuario != null)
+                // El hash es costoso a propósito (PBKDF2): se verifica fuera del hilo de la interfaz.
+                var resultado = await Task.Run(() => UsuarioService.Instancia.AutenticarAsync(usuario, clave));
+                switch (resultado.Estado)
                 {
-                    try
-                    {
-                        var accionesGrupo = Usuario.Grupos.Where(g => g.EstaActivo)
-                                           .SelectMany(g => g.Acciones);
-                        var accionesDirectas = Usuario.Acciones;
-
-                        var todasLasAccionesObj = accionesGrupo.Concat(accionesDirectas).ToList();
-
-                        var nombresPermisos = todasLasAccionesObj.Select(a => a.ACC_Nombre).Distinct().ToList();
-
-                        var nombresFormularios = todasLasAccionesObj
-                                                    .Where(a => a.Formulario != null)
-                                                    .Select(a => a.Formulario.FORM_Nombre)
-                                                    .Distinct()
-                                                    .ToList();
-
-                        var sesion = ControladoraSesiones.Instancia.RegistrarLogin(Usuario);
-                        Sesion.Instancia.Usuario = Usuario;
-                        PermisoService.Instancia.CargarPermisos(nombresPermisos, nombresFormularios);
-                        PermisoService.Instancia.UsuarioActual = Usuario;
-                        Form form = new FrmMenu();
-                        this.Hide();
-                        form.ShowDialog();
-                    }
-                    catch (Exception)
-                    {
-
-                        throw;
-                    }
+                    case EstadoLogin.Invalido:
+                        MessageBox.Show(this, "Usuario o clave incorrecta.", "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    case EstadoLogin.Bloqueado:
+                        MessageBox.Show(this,
+                            $"La cuenta está bloqueada por {UsuarioService.IntentosMaximos} intentos fallidos hasta las {resultado.BloqueadoHasta:HH:mm}.\n\n" +
+                            "Esperá o pedile a un administrador que la desbloquee.",
+                            "Cuenta bloqueada", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    case EstadoLogin.Inactivo:
+                        MessageBox.Show(this, "La cuenta está desactivada. Consultá con un administrador.", "Cuenta desactivada",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                 }
-                else
+
+                // Clave temporal (alta o blanqueo): hay que cambiarla antes de entrar.
+                if (resultado.DebeCambiarClave)
                 {
-                    MessageBox.Show("Usuario o clave incorrecta");
+                    UseWaitCursor = false;
+                    using var cambio = new FrmCambiarClave(resultado.UsuarioId, usuario, clave);
+                    if (cambio.ShowDialog(this) != DialogResult.OK) return;
                 }
+
+                var cuenta = await UsuarioService.Instancia.ObtenerUsuarioSesionAsync(resultado.UsuarioId)
+                    ?? throw new InvalidOperationException("La cuenta ya no existe.");
+                ControladoraSesiones.Instancia.RegistrarLogin(cuenta);
+                Sesion.Instancia.Usuario = cuenta;
+                PermisoService.Instancia.IniciarSesion(cuenta);
+
+                UseWaitCursor = false;
+                Form form = new FrmMenu();
+                this.Hide();
+                form.ShowDialog();
+                txtUsuario.Text = "USUARIO";
             }
-            txtClave.Text = "CONTRASEÑA";
-            txtClave.UseSystemPasswordChar = false;
-            txtUsuario.Text = "USUARIO";
+            catch (Exception ex)
+            {
+                ManejadorErrores.Mostrar(this, ex, "No se pudo iniciar sesión.");
+            }
+            finally
+            {
+                ingresando = false;
+                btnAceptar.Enabled = true;
+                UseWaitCursor = false;
+                txtClave.Text = "CONTRASEÑA";
+                txtClave.UseSystemPasswordChar = false;
+            }
         }
 
         private void lblRecuperarContraseña_Click(object sender, EventArgs e)

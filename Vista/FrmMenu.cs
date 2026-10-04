@@ -44,7 +44,7 @@ namespace Vista
             PermisoService.Instancia.Logout();
             Sesion.Instancia.Usuario = null;
 
-            // Un diálogo modal abierto (p. ej. FrmUsuario) impediría que el menú se cierre.
+            // Un diálogo modal abierto (p. ej. FrmEditarUsuario) impediría que el menú se cierre.
             foreach (var modal in Application.OpenForms.Cast<Form>().Where(f => f != this && f.Modal).ToList())
                 modal.Close();
 
@@ -277,6 +277,13 @@ namespace Vista
             {
                 AbrirFormulario<FrmGestionarReportes>();
             }
+        }
+
+        private void btnMiClave_Click(object sender, EventArgs e)
+        {
+            if (Sesion.Instancia.Usuario is not { } usuario) return;
+            using var form = new FrmCambiarClave(usuario.USU_ID, usuario.USU_Nombre);
+            form.ShowDialog(this);
         }
 
         private void btnGestionarInventario_Click(object sender, EventArgs e)

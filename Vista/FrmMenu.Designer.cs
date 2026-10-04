@@ -31,6 +31,7 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FrmMenu));
             panelMenu = new Panel();
             btnGestionarInventario = new Button();
+            btnMiClave = new Button();
             panel2 = new Panel();
             pictureBox1 = new PictureBox();
             panel1 = new Panel();
@@ -60,6 +61,7 @@
             // panelMenu
             // 
             panelMenu.BackColor = SystemColors.Control;
+            panelMenu.Controls.Add(btnMiClave);
             panelMenu.Controls.Add(btnGestionarInventario);
             panelMenu.Controls.Add(panel2);
             panelMenu.Controls.Add(panel1);
@@ -90,7 +92,20 @@
             btnGestionarInventario.Text = "INVENTARIO";
             btnGestionarInventario.UseVisualStyleBackColor = false;
             btnGestionarInventario.Click += btnGestionarInventario_Click;
-            // 
+            //
+            // btnMiClave
+            //
+            btnMiClave.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnMiClave.BackColor = SystemColors.Control;
+            btnMiClave.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            btnMiClave.Location = new Point(0, 687);
+            btnMiClave.Name = "btnMiClave";
+            btnMiClave.Size = new Size(321, 80);
+            btnMiClave.TabIndex = 13;
+            btnMiClave.Text = "MI CLAVE";
+            btnMiClave.UseVisualStyleBackColor = false;
+            btnMiClave.Click += btnMiClave_Click;
+            //
             // panel2
             // 
             panel2.Controls.Add(pictureBox1);
@@ -345,5 +360,6 @@
         private PictureBox pbCerrar;
         private Panel panelForm;
         private Button btnGestionarInventario;
+        private Button btnMiClave;
     }
 }

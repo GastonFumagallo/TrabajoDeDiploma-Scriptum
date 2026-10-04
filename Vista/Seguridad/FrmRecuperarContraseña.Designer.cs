@@ -38,6 +38,13 @@
             panelSuperior = new Panel();
             btnCancelar = new Button();
             pbLogo = new PictureBox();
+            lblInfo = new Label();
+            lblCodigo = new Label();
+            txtCodigo = new TextBox();
+            lblClaveNueva = new Label();
+            txtClaveNueva = new TextBox();
+            lblConfirmar = new Label();
+            txtConfirmar = new TextBox();
             panelSuperior.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbLogo).BeginInit();
             SuspendLayout();
@@ -131,13 +138,88 @@
             pbLogo.SizeMode = PictureBoxSizeMode.Zoom;
             pbLogo.TabIndex = 10;
             pbLogo.TabStop = false;
-            // 
+            //
+            // lblInfo
+            //
+            lblInfo.Location = new Point(28, 236);
+            lblInfo.Name = "lblInfo";
+            lblInfo.Size = new Size(520, 44);
+            lblInfo.TabIndex = 19;
+            lblInfo.Visible = false;
+            //
+            // lblCodigo
+            //
+            lblCodigo.AutoSize = true;
+            lblCodigo.Font = new Font("Segoe UI", 12F);
+            lblCodigo.Location = new Point(28, 288);
+            lblCodigo.Name = "lblCodigo";
+            lblCodigo.Size = new Size(79, 28);
+            lblCodigo.TabIndex = 20;
+            lblCodigo.Text = "Código:";
+            lblCodigo.Visible = false;
+            //
+            // txtCodigo
+            //
+            txtCodigo.Location = new Point(200, 289);
+            txtCodigo.MaxLength = 6;
+            txtCodigo.Name = "txtCodigo";
+            txtCodigo.Size = new Size(120, 27);
+            txtCodigo.TabIndex = 21;
+            txtCodigo.Visible = false;
+            //
+            // lblClaveNueva
+            //
+            lblClaveNueva.AutoSize = true;
+            lblClaveNueva.Font = new Font("Segoe UI", 12F);
+            lblClaveNueva.Location = new Point(28, 330);
+            lblClaveNueva.Name = "lblClaveNueva";
+            lblClaveNueva.Size = new Size(120, 28);
+            lblClaveNueva.TabIndex = 22;
+            lblClaveNueva.Text = "Clave nueva:";
+            lblClaveNueva.Visible = false;
+            //
+            // txtClaveNueva
+            //
+            txtClaveNueva.Location = new Point(200, 331);
+            txtClaveNueva.Name = "txtClaveNueva";
+            txtClaveNueva.Size = new Size(283, 27);
+            txtClaveNueva.TabIndex = 23;
+            txtClaveNueva.UseSystemPasswordChar = true;
+            txtClaveNueva.Visible = false;
+            //
+            // lblConfirmar
+            //
+            lblConfirmar.AutoSize = true;
+            lblConfirmar.Font = new Font("Segoe UI", 12F);
+            lblConfirmar.Location = new Point(28, 372);
+            lblConfirmar.Name = "lblConfirmar";
+            lblConfirmar.Size = new Size(152, 28);
+            lblConfirmar.TabIndex = 24;
+            lblConfirmar.Text = "Confirmar clave:";
+            lblConfirmar.Visible = false;
+            //
+            // txtConfirmar
+            //
+            txtConfirmar.Location = new Point(200, 373);
+            txtConfirmar.Name = "txtConfirmar";
+            txtConfirmar.Size = new Size(283, 27);
+            txtConfirmar.TabIndex = 25;
+            txtConfirmar.UseSystemPasswordChar = true;
+            txtConfirmar.Visible = false;
+            //
             // FrmRecuperarContraseña
-            // 
+            //
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(575, 271);
             ControlBox = false;
+            Controls.Add(txtConfirmar);
+            Controls.Add(lblConfirmar);
+            Controls.Add(txtClaveNueva);
+            Controls.Add(lblClaveNueva);
+            Controls.Add(txtCodigo);
+            Controls.Add(lblCodigo);
+            Controls.Add(lblInfo);
             Controls.Add(panelSuperior);
             Controls.Add(btnAceptar);
             Controls.Add(lblRecuperarContraseña);
@@ -162,5 +244,12 @@
         private Panel panelSuperior;
         private PictureBox pbLogo;
         private Button btnCancelar;
+        private Label lblInfo;
+        private Label lblCodigo;
+        private TextBox txtCodigo;
+        private Label lblClaveNueva;
+        private TextBox txtClaveNueva;
+        private Label lblConfirmar;
+        private TextBox txtConfirmar;
     }
 }
