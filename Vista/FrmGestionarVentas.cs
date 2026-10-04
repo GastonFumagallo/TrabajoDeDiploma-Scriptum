@@ -359,7 +359,7 @@ namespace Vista
         private void NuevaVenta()
         {
             if (TopLevelControl is FrmMenu principal)
-                principal.AbrirFormularioPanel(new FrmRealizarVenta());
+                principal.Navegar<FrmRealizarVenta>();
         }
 
         private void VerDetalle()
@@ -573,10 +573,10 @@ namespace Vista
 
         private void Salir()
         {
-            if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
-                principal.MostrarInicio();
-
-            Close();
+            if (TopLevelControl is FrmMenu principal)
+                principal.MostrarInicio();   // cierra y libera esta sección
+            else
+                Close();
         }
 
         private async void FrmGestionarVentas_KeyDown(object? sender, KeyEventArgs e)

@@ -47,14 +47,10 @@ namespace Vista.Seguridad
 
         private void btnVolver_Click(object sender, EventArgs e)
         {
-            FrmMenu principal = Application.OpenForms["FrmMenu"] as FrmMenu;
-
-            if (principal != null)
-            {
-                principal.MostrarInicio();
-            }
-
-            this.Close();
+            if (TopLevelControl is FrmMenu principal)
+                principal.MostrarInicio();   // cierra y libera esta sección
+            else
+                Close();
         }
 
         private void btnEliminar_Click(object sender, EventArgs e)
