@@ -1,3 +1,4 @@
+using Vista.Comun;
 using Vista.Theme;
 
 namespace Vista
@@ -10,6 +11,8 @@ namespace Vista
         [STAThread]
         static void Main()
         {
+            // Moneda, separadores y fechas de la aplicación, sin depender del formato regional de Windows.
+            CulturaRegional.Configurar();
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();

@@ -24,7 +24,7 @@ namespace Controladora
         public static ReporteService Instancia => instancia ??= new ReporteService();
         private ReporteService() { }
 
-        private static readonly CultureInfo Cultura = CultureInfo.CurrentCulture;
+        private static CultureInfo Cultura => CultureInfo.CurrentCulture;   // la que fija CulturaRegional al iniciar
 
         public async Task<ResultadoReporte> GenerarAsync(ParametrosReporte p, CancellationToken ct = default)
         {
