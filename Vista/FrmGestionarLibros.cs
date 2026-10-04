@@ -119,9 +119,10 @@ namespace Vista
 
         private void Salir()
         {
-            if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
-                principal.MostrarInicio();
-            Close();
+            if (TopLevelControl is FrmMenu principal)
+                principal.MostrarInicio();   // cierra y libera esta sección
+            else
+                Close();
         }
     }
 }

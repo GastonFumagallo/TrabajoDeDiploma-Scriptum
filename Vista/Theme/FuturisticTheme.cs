@@ -39,6 +39,12 @@ namespace Vista.Theme
 
         // Store per-button themed default color and selection state
         private static readonly ConditionalWeakTable<Button, ButtonState> _buttonStates = new();
+        private static readonly Lazy<Icon?> AppIcon = new(() =>
+        {
+            try { return Icon.FromHandle(Resources.icoScriptum.GetHicon()); }
+            catch { return null; /* ignore resource issues */ }
+        });
+
         private sealed class ButtonState { public Color DefaultColor; public bool IsSelected; public string OriginalText; public ButtonState(Color c) { DefaultColor = c; IsSelected = false; OriginalText = string.Empty; } }
 
         public static void Initialize()
@@ -83,19 +89,16 @@ namespace Vista.Theme
             if (string.Equals(form.GetType().Name, "FrmIniciarSesión", StringComparison.OrdinalIgnoreCase))
                 return;
 
+            _appliedForms.Add(form);
+
             form.BackColor = Background;
             form.ForeColor = Text;
             // Do NOT override form.Font: keep original sizes
 
-            // Try to set an app icon/logo if available in resources
-            try
-            {
-                if (Resources.scriptumLogo != null)
-                {
-                    form.Icon = Icon.FromHandle(Resources.icoScriptum.GetHicon());
-                }
-            }
-            catch { /* ignore resource issues */ }
+            // Un formulario embebido no muestra ícono; los de primer nivel comparten uno solo
+            // (GetHicon crea un handle nativo que nunca se libera: crearlo por formulario es una fuga de GDI).
+            if (form.TopLevel && AppIcon.Value != null)
+                form.Icon = AppIcon.Value;
 
             ApplyToControlCollection(form.Controls);
         }
@@ -258,10 +261,8 @@ namespace Vista.Theme
             b.MouseEnter += Button_MouseEnter;
             b.MouseLeave -= Button_MouseLeave;
             b.MouseLeave += Button_MouseLeave;
-
-            // Click: if in menu panel, set selection state
-            b.Click -= Button_MenuClick;
-            b.Click += Button_MenuClick;
+            // La selección del menú no se marca al hacer clic: la decide el shell con SeleccionarBotonMenu,
+            // porque la navegación puede denegarse (permisos) o cancelarse (cambios sin guardar).
         }
 
         private static bool IsInPanelForm(Control c)
@@ -336,32 +337,18 @@ namespace Vista.Theme
             b.BackColor = state.DefaultColor;
         }
 
-        private static void Button_MenuClick(object? sender, EventArgs e)
+        /// <summary>Marca <paramref name="seleccionado"/> como la sección activa de <paramref name="menuPanel"/> (null = ninguna).</summary>
+        public static void SeleccionarBotonMenu(Control menuPanel, Button? seleccionado)
         {
-            if (sender is not Button clicked) return;
-            if (!_buttonStates.TryGetValue(clicked, out var clickedState)) return;
-
-            // Only handle selection if it's in a menu panel
-            if (!IsInMenuPanel(clicked)) return;
-
-            // Find the topmost menu panel ancestor
-            Control? menuPanel = clicked.Parent;
-            while (menuPanel != null && !(menuPanel is Panel && (menuPanel.Name?.ToLowerInvariant().Contains("menu") ?? false)))
-                menuPanel = menuPanel.Parent;
-
-            if (menuPanel == null) return;
-
-            // Iterate buttons inside this menu panel and set selection
-            var buttons = GetAllControls(menuPanel).OfType<Button>();
-            foreach (var btn in buttons)
+            foreach (var btn in GetAllControls(menuPanel).OfType<Button>())
             {
                 if (!_buttonStates.TryGetValue(btn, out var st))
                 {
-                    st = new ButtonState(IsInMenuPanel(btn) ? Black : Secondary);
+                    st = new ButtonState(Black);
                     _buttonStates.Add(btn, st);
                 }
 
-                if (ReferenceEquals(btn, clicked))
+                if (ReferenceEquals(btn, seleccionado))
                 {
                     st.IsSelected = true;
                     btn.BackColor = Accent; // BrightRed

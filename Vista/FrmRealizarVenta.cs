@@ -927,24 +927,26 @@ namespace Vista
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        // La confirmación de "venta en curso" vive en FormClosing: cubre Volver, el menú lateral y el cierre de sesión.
         private void Volver()
         {
-            if (procesando) return;
-            if (carrito.Count > 0 &&
-                MessageBox.Show("Hay una venta en curso. ¿Desea descartarla y salir?", "Venta en curso",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
-                return;
-
-            if (Application.OpenForms["FrmMenu"] is FrmMenu principal)
-                principal.MostrarGestionarVentas();
-
-            Close();
+            if (TopLevelControl is FrmMenu principal)
+                principal.Navegar<FrmGestionarVentas>();
+            else
+                Close();
         }
 
         private void FrmRealizarVenta_FormClosing(object? sender, FormClosingEventArgs e)
         {
             // No se permite cerrar mientras se está registrando una venta.
             if (procesando)
+            {
+                e.Cancel = true;
+                return;
+            }
+            if (e.CloseReason == CloseReason.UserClosing && carrito.Count > 0 &&
+                MessageBox.Show(this, "Hay una venta en curso. ¿Desea descartarla y salir?", "Venta en curso",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
             {
                 e.Cancel = true;
                 return;

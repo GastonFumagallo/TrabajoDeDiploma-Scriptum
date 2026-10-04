@@ -44,9 +44,24 @@ namespace Vista
                         Sesion.Instancia.Usuario = Usuario;
                         PermisoService.Instancia.CargarPermisos(nombresPermisos, nombresFormularios);
                         PermisoService.Instancia.UsuarioActual = Usuario;
-                        Form form = new FrmMenu();
-                        this.Hide();
-                        form.ShowDialog();
+                        // ShowDialog no libera el formulario al cerrarse: sin using, cada logout dejaba
+                        // vivo el menú entero en memoria.
+                        bool salir;
+                        using (var menu = new FrmMenu())
+                        {
+                            Hide();
+                            menu.ShowDialog();
+                            salir = menu.SalirDeLaAplicacion;
+                        }
+
+                        if (salir)
+                        {
+                            Close();   // es el formulario principal: termina la aplicación
+                            return;
+                        }
+
+                        LimpiarCredenciales();
+                        Show();
                     }
                     catch (Exception)
                     {
