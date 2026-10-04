@@ -8,6 +8,9 @@ namespace Modelo.Seguridad
 {
     public partial class Estado_Grupo
     {
+        /// <summary>Estados de grupo de sistema (los inserta la migración GestionGrupos). Se identifican por nombre, no por ID.</summary>
+        public const string Activo = "Activo";
+        public const string Inactivo = "Inactivo";
 
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

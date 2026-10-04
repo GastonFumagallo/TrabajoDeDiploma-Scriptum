@@ -26,7 +26,7 @@ namespace Vista
                 {
                     try
                     {
-                        var accionesGrupo = Usuario.Grupos.Where(g => g.Estado_Grupo.EST_GRU_ID == 1)
+                        var accionesGrupo = Usuario.Grupos.Where(g => g.EstaActivo)
                                            .SelectMany(g => g.Acciones);
                         var accionesDirectas = Usuario.Acciones;
 

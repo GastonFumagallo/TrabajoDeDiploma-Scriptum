@@ -23,12 +23,12 @@ namespace Servicios
 
         public bool TienePermiso(string nombreAccion)
         {
-            if (UsuarioActual != null && UsuarioActual.Grupos.Any(g => g.GRU_Nombre == "Administrador")) return true;
+            if (UsuarioActual != null && UsuarioActual.Grupos.Any(g => g.GRU_Nombre == Grupo.NombreAdministrador)) return true;
             return Permisos.Contains(nombreAccion);
         }
         public bool PuedeAccederFormulario(string nombreFormulario)
         {
-            if (UsuarioActual != null && UsuarioActual.Grupos.Any(g => g.GRU_Nombre == "Administrador")) return true;
+            if (UsuarioActual != null && UsuarioActual.Grupos.Any(g => g.GRU_Nombre == Grupo.NombreAdministrador)) return true;
 
             return FormsHabilitados.Contains(nombreFormulario);
         }
