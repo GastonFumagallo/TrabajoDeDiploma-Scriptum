@@ -11,7 +11,6 @@ namespace Vista
 {
     public partial class FrmHome : Form
     {
-        private const int MENU_ANCHO = 321; 
         public FrmHome()
         {
             InitializeComponent();
@@ -42,34 +41,9 @@ namespace Vista
                 return "Usuario";
             }
         }
-        public void SetWelcomeText(string text)
-        {
-            if (lblInicio != null)
-            {
-                lblInicio.Text = text;
-                CenterInicioLabel();
-            }
-        }
-
-
-        private void CenterInicioLabel()
-        {
-            if (lblInicio == null || this.ClientSize.Width == 0) 
-                return;
-            int areaUtil = this.ClientSize.Width - MENU_ANCHO;
-            if (areaUtil <= 0) return;
-            lblInicio.AutoSize = false;
-            lblInicio.MaximumSize = new Size(areaUtil - 20, 0); 
-            lblInicio.AutoSize = true;
-            var px = Math.Max(0, (this.ClientSize.Width - lblInicio.PreferredWidth) / 2);
-            var py = Math.Max(0, (this.ClientSize.Height - lblInicio.PreferredHeight) / 2);
-            lblInicio.Location = new Point(px, py);
-        }
-
-        private void FrmHome_Load(object sender, EventArgs e)
-        {
-            CenterInicioLabel();
-        }
+        // lblInicio ocupa todo el formulario (Dock = Fill, AutoSize = false, TextAlign = MiddleCenter):
+        // el texto queda centrado y se reacomoda solo al redimensionar o al cambiar su longitud.
+        public void SetWelcomeText(string text) => lblInicio.Text = text;
     }
 
 }
