@@ -43,11 +43,11 @@ namespace Controladora
         public int RegistrarLogin(Usuario usuario)
         {
 
-            CerrarSesionesAbandonadas(usuario.PER_ID);
+            CerrarSesionesAbandonadas(usuario.USU_ID);
 
             var auditoria = new AuditoriaSesion
             {
-                AS_USU_ID = usuario.PER_ID,
+                AS_USU_ID = usuario.USU_ID,   // antes guardaba el ID de la persona
                 AS_FechaHoraLogin = DateTime.Now,
                 AS_SesionActiva = true
             };

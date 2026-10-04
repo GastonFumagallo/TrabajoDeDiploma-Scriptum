@@ -15,68 +15,75 @@ namespace Vista
         }
         private void btnAceptar_Click(object sender, EventArgs e)
         {
-            if (txtClave.Text == string.Empty || txtUsuario.Text == string.Empty)
+            // Los textos de ayuda ("USUARIO", "CONTRASEÑA") no son credenciales: no deben sumar intentos fallidos.
+            if (txtClave.Text is "" or "CONTRASEÑA" || txtUsuario.Text is "" or "USUARIO")
             {
                 MessageBox.Show("Debe completar todos los campos");
             }
             else
             {
-                var Usuario = ControladoraUsuarios.Instancia.IniciarSesion(txtUsuario.Text, txtClave.Text);
-                if (Usuario != null)
+                string nombre = txtUsuario.Text.Trim();
+                string clave = txtClave.Text;
+                LimpiarCredenciales();   // la clave no queda en pantalla mientras la sesión está abierta
+
+                ResultadoLogin resultado;
+                Cursor = Cursors.WaitCursor;   // verificar el hash tarda a propósito (factor de trabajo)
+                try { resultado = ControladoraUsuarios.Instancia.IniciarSesion(nombre, clave); }
+                finally { Cursor = Cursors.Default; }
+
+                if (!resultado.Exitoso)
                 {
-                    try
-                    {
-                        var accionesGrupo = Usuario.Grupos.Where(g => g.Estado_Grupo.EST_GRU_ID == 1)
-                                           .SelectMany(g => g.Acciones);
-                        var accionesDirectas = Usuario.Acciones;
-
-                        var todasLasAccionesObj = accionesGrupo.Concat(accionesDirectas).ToList();
-
-                        var nombresPermisos = todasLasAccionesObj.Select(a => a.ACC_Nombre).Distinct().ToList();
-
-                        var nombresFormularios = todasLasAccionesObj
-                                                    .Where(a => a.Formulario != null)
-                                                    .Select(a => a.Formulario.FORM_Nombre)
-                                                    .Distinct()
-                                                    .ToList();
-
-                        var sesion = ControladoraSesiones.Instancia.RegistrarLogin(Usuario);
-                        Sesion.Instancia.Usuario = Usuario;
-                        PermisoService.Instancia.CargarPermisos(nombresPermisos, nombresFormularios);
-                        PermisoService.Instancia.UsuarioActual = Usuario;
-                        // ShowDialog no libera el formulario al cerrarse: sin using, cada logout dejaba
-                        // vivo el menú entero en memoria.
-                        bool salir;
-                        using (var menu = new FrmMenu())
-                        {
-                            Hide();
-                            menu.ShowDialog();
-                            salir = menu.SalirDeLaAplicacion;
-                        }
-
-                        if (salir)
-                        {
-                            Close();   // es el formulario principal: termina la aplicación
-                            return;
-                        }
-
-                        LimpiarCredenciales();
-                        Show();
-                    }
-                    catch (Exception)
-                    {
-
-                        throw;
-                    }
+                    MessageBox.Show(this, resultado.Error, "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
-                else
+
+                var Usuario = resultado.Usuario!;
+
+                // Clave temporal (alta, reseteo o recuperación): no se entra sin elegir una propia.
+                if (resultado.DebeCambiarClave)
                 {
-                    MessageBox.Show("Usuario o clave incorrecta");
+                    using var cambio = new FrmCambiarClave(Usuario.USU_ID, obligatorio: true);
+                    if (cambio.ShowDialog(this) != DialogResult.OK)
+                        return;
                 }
+
+                var accionesGrupo = Usuario.Grupos.Where(g => g.Estado_Grupo.EST_GRU_ID == 1)
+                                   .SelectMany(g => g.Acciones);
+                var accionesDirectas = Usuario.Acciones;
+
+                var todasLasAccionesObj = accionesGrupo.Concat(accionesDirectas).ToList();
+
+                var nombresPermisos = todasLasAccionesObj.Select(a => a.ACC_Nombre).Distinct().ToList();
+
+                var nombresFormularios = todasLasAccionesObj
+                                            .Where(a => a.Formulario != null)
+                                            .Select(a => a.Formulario.FORM_Nombre)
+                                            .Distinct()
+                                            .ToList();
+
+                ControladoraSesiones.Instancia.RegistrarLogin(Usuario);
+                Sesion.Instancia.Usuario = Usuario;
+                PermisoService.Instancia.CargarPermisos(nombresPermisos, nombresFormularios);
+                PermisoService.Instancia.UsuarioActual = Usuario;
+                // ShowDialog no libera el formulario al cerrarse: sin using, cada logout dejaba
+                // vivo el menú entero en memoria.
+                bool salir;
+                using (var menu = new FrmMenu())
+                {
+                    Hide();
+                    menu.ShowDialog();
+                    salir = menu.SalirDeLaAplicacion;
+                }
+
+                if (salir)
+                {
+                    Close();   // es el formulario principal: termina la aplicación
+                    return;
+                }
+
+                LimpiarCredenciales();
+                Show();
             }
-            txtClave.Text = "CONTRASEÑA";
-            txtClave.UseSystemPasswordChar = false;
-            txtUsuario.Text = "USUARIO";
         }
 
         private void lblRecuperarContraseña_Click(object sender, EventArgs e)

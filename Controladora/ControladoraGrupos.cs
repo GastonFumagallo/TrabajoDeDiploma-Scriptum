@@ -2,6 +2,7 @@
 using Modelo;
 using Modelo.Contexto;
 using Modelo.Seguridad;
+using Servicios;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -116,6 +117,8 @@ namespace Controladora
 
         public string AgregarGrupo(Grupo grupo)
         {
+            PermisoService.Instancia.Exigir("AgregarGrupo");
+
             using var db = new Libreria();
             if (db.Grupos.Any(x => x.GRU_Nombre == grupo.GRU_Nombre))
             {
@@ -134,11 +137,14 @@ namespace Controladora
             db.Grupos.Add(nuevo);
             db.SaveChanges();
             grupo.GRU_ID = nuevo.GRU_ID;
+            BitacoraSeguridad.Registrar(BitacoraSeguridad.GrupoCreado, DescribirGrupo(nuevo));
             return "Grupo agreado correctamente";
         }
 
         public string EliminarGrupo(Grupo grupo)
         {
+            PermisoService.Instancia.Exigir("EliminarGrupo");
+
             if (grupo == null)
             {
                 return "El grupo solicitado no fue encontrado";
@@ -148,10 +154,14 @@ namespace Controladora
             var GrupoExistente = db.Grupos.FirstOrDefault(x => x.GRU_ID == grupo.GRU_ID);
             if (GrupoExistente != null)
             {
+                if (GrupoExistente.GRU_Nombre == PermisoService.GrupoAdministrador)
+                    return "El grupo Administrador no puede eliminarse";
+
                 if (!db.Usuarios.Any(u => u.Grupos.Any(g => g.GRU_ID == grupo.GRU_ID)))
                 {
                     db.Grupos.Remove(GrupoExistente);
                     db.SaveChanges();
+                    BitacoraSeguridad.Registrar(BitacoraSeguridad.GrupoEliminado, GrupoExistente.GRU_Nombre);
                     return "El grupo fue eliminado";
                 }
                 else
@@ -164,18 +174,41 @@ namespace Controladora
 
         public string ModificarGrupo(Grupo grupo)
         {
+            PermisoService.Instancia.Exigir("ModificarGrupo");
+
             using var db = new Libreria();
             var GrupoExistente = db.Grupos
                 .Include(g => g.Acciones)
                 .FirstOrDefault(x => x.GRU_ID == grupo.GRU_ID);
             if (GrupoExistente != null)
             {
+                // Ser "Administrador" depende del nombre del grupo: renombrar otro grupo así daba acceso total
+                // a todos sus miembros. Antes este método ni siquiera validaba nombres repetidos.
+                bool eraAdministrador = GrupoExistente.GRU_Nombre == PermisoService.GrupoAdministrador;
+                if (eraAdministrador != (grupo.GRU_Nombre == PermisoService.GrupoAdministrador))
+                    return "El grupo Administrador no puede renombrarse, ni otro grupo tomar ese nombre";
+                if (db.Grupos.Any(x => x.GRU_Nombre == grupo.GRU_Nombre && x.GRU_ID != grupo.GRU_ID))
+                    return "Ya existe el grupo " + grupo.GRU_Nombre + " en el sistema";
+
+                int estadoNuevo = grupo.Estado_Grupo?.EST_GRU_ID ?? grupo.EST_GRU_ID;
+                if (eraAdministrador && estadoNuevo != GrupoExistente.EST_GRU_ID)
+                    return "El grupo Administrador no puede deshabilitarse";
+
+                // Nadie se amplía los permisos a través de un grupo propio: lo tiene que hacer otro administrador.
+                var usuarioActual = Sesion.Instancia.Usuario;
+                bool perteneceAlGrupo = usuarioActual?.Grupos.Any(g => g.GRU_ID == grupo.GRU_ID) == true;
+                bool cambianAcciones = !GrupoExistente.Acciones.Select(a => a.ACC_ID).ToHashSet()
+                    .SetEquals(grupo.Acciones.Select(a => a.ACC_ID));
+                if (perteneceAlGrupo && cambianAcciones && !eraAdministrador)
+                    return "No puede modificar los permisos de un grupo al que pertenece";
+
                 GrupoExistente.GRU_Nombre = grupo.GRU_Nombre;
                 GrupoExistente.GRU_Descripcion = grupo.GRU_Descripcion;
-                GrupoExistente.EST_GRU_ID = grupo.Estado_Grupo?.EST_GRU_ID ?? grupo.EST_GRU_ID;
+                GrupoExistente.EST_GRU_ID = estadoNuevo;
                 AplicarAcciones(db, GrupoExistente, grupo);
 
                 db.SaveChanges();
+                BitacoraSeguridad.Registrar(BitacoraSeguridad.GrupoModificado, DescribirGrupo(GrupoExistente));
                 return "El grupo fue Modificado";
             }
             else
@@ -189,5 +222,8 @@ namespace Controladora
             SincronizadorColecciones.Sincronizar(destino.Acciones, origen.Acciones.Select(a => a.ACC_ID), a => a.ACC_ID,
                 ids => db.Acciones.Where(a => ids.Contains(a.ACC_ID)).ToList());
         }
+
+        private static string DescribirGrupo(Grupo grupo) =>
+            $"{grupo.GRU_Nombre} · acciones: [{string.Join(", ", grupo.Acciones.Select(a => a.ACC_Nombre))}]";
     }
 }

@@ -1,5 +1,4 @@
 ﻿using Controladora;
-using Servicios;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -25,17 +24,13 @@ namespace Vista.Seguridad
             }
             else
             {
-                string claveNueva = ServiciosUsuario.GenerarPassword();
-                var ok = ControladoraUsuarios.Instancia.RecuperarClave(txtUsuario.Text, txtEmail.Text, claveNueva);
-                if (ok)
-                {
-                    MessageBox.Show("La nueva clave sera enviada a su E-mail registrado");
-                    this.Close();
-                }
-                else
-                {
-                    MessageBox.Show("Usuario o email incorrectos");
-                }
+                // El mismo mensaje exista o no el usuario: la pantalla no sirve para averiguar cuentas válidas.
+                ControladoraUsuarios.Instancia.SolicitarRecuperacion(txtUsuario.Text.Trim(), txtEmail.Text.Trim());
+                MessageBox.Show(this,
+                    "Si el usuario y el email son correctos, vas a recibir una clave temporal válida por 30 minutos.\n" +
+                    "Tu clave actual sigue funcionando hasta que uses la temporal.",
+                    "Recuperar clave", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.Close();
             }
         }
 

@@ -52,28 +52,14 @@ namespace Servicios
             }
             return true;
         }
-        public static string GenerarPassword()
-        {
-            var random = new Random();
-            return string.Concat(Enumerable.Range(0, 5).Select(_ => random.Next(0, 9).ToString()));
-        }
-        public static string EncriptarClave(string clave)
-        {
-            StringBuilder sb = new StringBuilder();
-            using (SHA256 sha256 = SHA256.Create())
-            {
-                Encoding enc = Encoding.UTF8;
-                if (!String.IsNullOrEmpty(clave))
-                {
-                    byte[] resoult = sha256.ComputeHash(enc.GetBytes(clave));
-                    foreach (byte b in resoult)
-                    {
-                        sb.Append(b.ToString("x2"));
-                    }
-                }
-            }
-            return sb.ToString();
-        }
+        // Sin caracteres ambiguos (0/O, 1/l/I) porque el usuario la copia del email.
+        private const string AlfabetoClaveTemporal = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+        /// <summary>
+        /// Clave temporal de 10 caracteres generada con un RNG criptográfico (~57 bits de entropía).
+        /// Antes eran 5 dígitos con <c>Random</c> (59.049 combinaciones posibles).
+        /// </summary>
+        public static string GenerarPassword() => RandomNumberGenerator.GetString(AlfabetoClaveTemporal, 10);
 
     }
 }

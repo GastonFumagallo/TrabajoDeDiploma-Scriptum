@@ -45,4 +45,16 @@ namespace Modelo
     {
         public PersistenciaException(string mensaje, Exception interna) : base(mensaje, interna) { }
     }
+
+    /// <summary>
+    /// El usuario logueado no tiene el permiso que exige la operación. La lanza la capa de negocio aunque la UI
+    /// ya haya ocultado el botón: ocultar controles es comodidad, no seguridad.
+    /// </summary>
+    public sealed class AccesoDenegadoException : Exception
+    {
+        public AccesoDenegadoException(string permiso)
+            : base($"No tiene permiso para realizar esta acción ({permiso}).") => Permiso = permiso;
+
+        public string Permiso { get; }
+    }
 }

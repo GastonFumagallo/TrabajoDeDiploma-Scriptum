@@ -1,5 +1,6 @@
 ﻿using Modelo.Seguridad;
 using Controladora;
+using Vista.Comun;
 using Servicios;
 using System;
 using System.Collections.Generic;
@@ -59,8 +60,15 @@ namespace Vista.Seguridad
             {
                 var grupo = (GrupoDTO)dgvGrupos.CurrentRow.DataBoundItem;
                 Grupo grupoEliminar = ControladoraGrupos.Instancia.buscarGrupoIndividual(grupo);
-                var msj = ControladoraGrupos.Instancia.EliminarGrupo(grupoEliminar);
-                MessageBox.Show(msj);
+                try
+                {
+                    MessageBox.Show(this, ControladoraGrupos.Instancia.EliminarGrupo(grupoEliminar));
+                }
+                catch (Exception ex)
+                {
+                    ManejadorErrores.Mostrar(this, ex, "No se pudo completar la operación.");
+                    return;
+                }
             }
             LlenarGrilla();
         }

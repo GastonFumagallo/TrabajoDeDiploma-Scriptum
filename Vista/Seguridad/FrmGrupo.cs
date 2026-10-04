@@ -1,4 +1,5 @@
 ﻿using Controladora;
+using Vista.Comun;
 using Modelo.Seguridad;
 using System;
 using System.Collections.Generic;
@@ -149,8 +150,15 @@ namespace Vista.Seguridad
                     grupo.AgregarAccion(ac);
                 }
 
-                var msj = ControladoraGrupos.Instancia.ModificarGrupo(grupo);
-                MessageBox.Show(msj);
+                try
+                {
+                    MessageBox.Show(this, ControladoraGrupos.Instancia.ModificarGrupo(grupo));
+                }
+                catch (Exception ex)
+                {
+                    ManejadorErrores.Mostrar(this, ex, "No se pudo completar la operación.");
+                    return;
+                }
                 this.Close();
             }
             else
@@ -166,8 +174,15 @@ namespace Vista.Seguridad
                     grupo.AgregarAccion(ac);
                 }
 
-                var msj = ControladoraGrupos.Instancia.AgregarGrupo(grupo);
-                MessageBox.Show(msj);
+                try
+                {
+                    MessageBox.Show(this, ControladoraGrupos.Instancia.AgregarGrupo(grupo));
+                }
+                catch (Exception ex)
+                {
+                    ManejadorErrores.Mostrar(this, ex, "No se pudo completar la operación.");
+                    return;
+                }
                 this.Close();
             }
         }
