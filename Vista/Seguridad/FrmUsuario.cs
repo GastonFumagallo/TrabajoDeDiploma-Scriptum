@@ -53,8 +53,10 @@ namespace Vista.Seguridad
             txtEmail.Text = usuario.USU_Mail;
             txtDNI.Text = usuario.USU_Persona.PER_DNI.ToString();
             txtTelefono.Text = usuario.USU_Persona.PER_Telefono;
-            cbEstados.DataSource = ControladoraUsuarios.Instancia.getAllEstadosUsuario();
-            cbEstados.SelectedItem = usuario.Estado_Usuario;
+            var estados = ControladoraUsuarios.Instancia.getAllEstadosUsuario();
+            cbEstados.DataSource = estados;
+            // Los estados vienen de otra consulta (otras instancias): se selecciona por ID.
+            cbEstados.SelectedItem = estados.FirstOrDefault(e => e.EST_USU_ID == usuario.EST_USU_ID);
             txtEmail.Enabled = false;
             txtEmail.BackColor = Color.LightGray;
         }

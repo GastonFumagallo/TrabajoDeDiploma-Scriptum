@@ -11,15 +11,8 @@ namespace Modelo.Contexto
 {
     public class Libreria : DbContext
     {
-        private static Libreria contexto;
-        public static Libreria Contexto
-        {
-            get
-            {
-                if (contexto == null) { contexto = new Libreria(); }
-                return contexto;
-            }
-        }
+        // Sin instancia global: cada operación crea y descarta su propio contexto
+        // (`using var db = new Libreria();`). DbContext no es thread-safe y su ChangeTracker crece sin límite.
         public  Libreria() { }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

@@ -18,9 +18,61 @@ namespace Vista
         public FrmMenu()
         {
             InitializeComponent();
+            ControladoraSesiones.Instancia.OnSesionExpirada += SesionExpirada;
+            FormClosed += (_, _) => ControladoraSesiones.Instancia.OnSesionExpirada -= SesionExpirada;
         }
 
-     
+        // Llega desde el hilo del timer de ControladoraSesiones: hay que pasar al hilo de UI.
+        private void SesionExpirada(string mensaje)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                BeginInvoke(() => CerrarPorExpiracion(mensaje));
+            }
+            catch (InvalidOperationException)
+            {
+                // El formulario se cerró entre la verificación y el BeginInvoke.
+            }
+        }
+
+        private void CerrarPorExpiracion(string mensaje)
+        {
+            if (IsDisposed) return;
+
+            // La controladora ya registró el logout por timeout; acá sólo se limpia la sesión en memoria.
+            PermisoService.Instancia.Logout();
+            Sesion.Instancia.Usuario = null;
+
+            // Un diálogo modal abierto (p. ej. FrmUsuario) impediría que el menú se cierre.
+            foreach (var modal in Application.OpenForms.Cast<Form>().Where(f => f != this && f.Modal).ToList())
+                modal.Close();
+
+            MessageBox.Show(this, mensaje, "Sesión expirada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            VolverAlLogin();
+            this.Close();
+        }
+
+        private void VolverAlLogin()
+        {
+            try
+            {
+                var login = Application.OpenForms.OfType<FrmIniciarSesión>().FirstOrDefault();
+                if (login != null)
+                {
+                    login.LimpiarCredenciales();
+                    login.Show();
+                    login.BringToFront();
+                }
+                else
+                {
+                    var nuevo = new FrmIniciarSesión();
+                    nuevo.Show();
+                }
+            }
+            catch { }
+        }
+
 
         private void btnClientes_Click(object sender, EventArgs e)
         {
@@ -108,26 +160,7 @@ namespace Vista
                 }
                 catch { }
 
-                try
-                {
-                    var login = Application.OpenForms.OfType<FrmIniciarSesión>().FirstOrDefault();
-                    if (login != null)
-                    {
-                        login.Invoke((Action)(() =>
-                        {
-                            login.LimpiarCredenciales();
-                            login.Show();
-                            login.BringToFront();
-                        }));
-                    }
-                    else
-                    {
-                        var nuevo = new FrmIniciarSesión();
-                        nuevo.Show();
-                    }
-                }
-                catch { }
-
+                VolverAlLogin();
                 this.Close();
             }
         }
