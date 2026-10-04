@@ -101,7 +101,7 @@ namespace Modelo.Seguridad
 
         public ReadOnlyCollection<Grupo> getAllGruposActivos()
         {
-            return Grupos.Where(x => x.Estado_Grupo.EST_GRU_Nombre != "Deshabilitado").ToList().AsReadOnly();
+            return Grupos.Where(x => x.EstaActivo).ToList().AsReadOnly();
         }
 
 
