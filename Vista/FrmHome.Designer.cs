@@ -33,13 +33,13 @@
             // 
             // lblInicio
             // 
-            lblInicio.AutoSize = true;
             lblInicio.BackColor = SystemColors.Control;
+            lblInicio.Dock = DockStyle.Fill;
             lblInicio.Font = new Font("Segoe UI", 32F, FontStyle.Bold);
-            lblInicio.Location = new Point(8, 9);
-            lblInicio.MaximumSize = new Size(600, 0);
+            lblInicio.Location = new Point(0, 0);
             lblInicio.Name = "lblInicio";
-            lblInicio.Size = new Size(313, 72);
+            lblInicio.Padding = new Padding(40);
+            lblInicio.Size = new Size(800, 450);
             lblInicio.TabIndex = 0;
             lblInicio.Tag = "Bienvenido";
             lblInicio.Text = "Bienvenido";
@@ -53,9 +53,7 @@
             Controls.Add(lblInicio);
             Name = "FrmHome";
             Text = "INICIO";
-            Load += FrmHome_Load;
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
