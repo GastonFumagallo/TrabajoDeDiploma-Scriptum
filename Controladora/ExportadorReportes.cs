@@ -19,7 +19,7 @@ namespace Controladora
     public static class ExportadorReportes
     {
         private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> Propiedades = new();
-        private static readonly CultureInfo Cultura = CultureInfo.CurrentCulture;
+        private static CultureInfo Cultura => CultureInfo.CurrentCulture;   // la que fija CulturaRegional al iniciar
 
         #region Excel
 

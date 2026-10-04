@@ -14,7 +14,7 @@ namespace Vista.Comun
     internal static class GraficosReporte
     {
         private static readonly IPalette Paleta = new ScottPlot.Palettes.Category10();
-        private static readonly CultureInfo Cultura = CultureInfo.CurrentCulture;
+        private static CultureInfo Cultura => CultureInfo.CurrentCulture;   // la que fija CulturaRegional al iniciar
 
         public static void Dibujar(Plot plot, GraficoReporte g)
         {
