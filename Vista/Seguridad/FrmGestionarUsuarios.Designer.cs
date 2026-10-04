@@ -1,4 +1,4 @@
-﻿namespace Vista.Seguridad
+namespace Vista.Seguridad
 {
     partial class FrmGestionarUsuarios
     {
@@ -28,242 +28,270 @@
         /// </summary>
         private void InitializeComponent()
         {
-            panel1 = new Panel();
-            btnAgregar = new Button();
+            panelAcciones = new Panel();
+            btnNuevo = new Button();
+            btnEditar = new Button();
+            btnCambiarEstado = new Button();
             btnResetearClave = new Button();
-            btnModificar = new Button();
-            btnEliminar = new Button();
-            btnVolver = new Button();
-            gbFiltrar = new GroupBox();
-            btnFiltrar = new Button();
-            cbEstados = new ComboBox();
-            label3 = new Label();
-            label1 = new Label();
-            cbGrupos = new ComboBox();
-            label2 = new Label();
-            txtNombre = new TextBox();
-            dgvUsuarios = new DataGridView();
-            panel1.SuspendLayout();
-            gbFiltrar.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)dgvUsuarios).BeginInit();
+            btnDesbloquear = new Button();
+            btnExportar = new Button();
+            btnImprimir = new Button();
+            btnSalir = new Button();
+            panelFiltros = new Panel();
+            lblBuscar = new Label();
+            txtBuscar = new TextBox();
+            lblEstado = new Label();
+            cbEstado = new ComboBox();
+            lblFiltroExtra = new Label();
+            cbFiltroExtra = new ComboBox();
+            chkSoloBloqueados = new CheckBox();
+            btnLimpiarFiltros = new Button();
+            dgvListado = new DataGridView();
+            lblResumen = new Label();
+            panelAcciones.SuspendLayout();
+            panelFiltros.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvListado).BeginInit();
             SuspendLayout();
-            // 
-            // panel1
-            // 
-            panel1.BackColor = SystemColors.Control;
-            panel1.Controls.Add(btnAgregar);
-            panel1.Controls.Add(btnResetearClave);
-            panel1.Controls.Add(btnModificar);
-            panel1.Controls.Add(btnEliminar);
-            panel1.Dock = DockStyle.Top;
-            panel1.Location = new Point(0, 0);
-            panel1.Margin = new Padding(3, 4, 3, 4);
-            panel1.Name = "panel1";
-            panel1.Size = new Size(1210, 61);
-            panel1.TabIndex = 0;
-            // 
-            // btnAgregar
-            // 
-            btnAgregar.BackColor = SystemColors.Control;
-            btnAgregar.Location = new Point(5, 4);
-            btnAgregar.Margin = new Padding(5, 4, 5, 4);
-            btnAgregar.Name = "btnAgregar";
-            btnAgregar.Size = new Size(120, 47);
-            btnAgregar.TabIndex = 10;
-            btnAgregar.Text = "Agregar";
-            btnAgregar.UseVisualStyleBackColor = false;
-            btnAgregar.Click += btnAgregar_Click;
-            // 
+            //
+            // panelAcciones
+            //
+            panelAcciones.Controls.Add(btnNuevo);
+            panelAcciones.Controls.Add(btnEditar);
+            panelAcciones.Controls.Add(btnCambiarEstado);
+            panelAcciones.Controls.Add(btnResetearClave);
+            panelAcciones.Controls.Add(btnDesbloquear);
+            panelAcciones.Controls.Add(btnExportar);
+            panelAcciones.Controls.Add(btnImprimir);
+            panelAcciones.Controls.Add(btnSalir);
+            panelAcciones.Dock = DockStyle.Top;
+            panelAcciones.Location = new Point(0, 0);
+            panelAcciones.Name = "panelAcciones";
+            panelAcciones.Size = new Size(1427, 80);
+            panelAcciones.TabIndex = 0;
+            //
+            // btnNuevo
+            //
+            btnNuevo.Location = new Point(12, 8);
+            btnNuevo.Name = "btnNuevo";
+            btnNuevo.Size = new Size(130, 64);
+            btnNuevo.TabIndex = 0;
+            btnNuevo.Text = "Nuevo (F2)";
+            btnNuevo.UseVisualStyleBackColor = true;
+            //
+            // btnEditar
+            //
+            btnEditar.Location = new Point(148, 8);
+            btnEditar.Name = "btnEditar";
+            btnEditar.Size = new Size(130, 64);
+            btnEditar.TabIndex = 1;
+            btnEditar.Text = "Modificar (F3)";
+            btnEditar.UseVisualStyleBackColor = true;
+            //
+            // btnCambiarEstado
+            //
+            btnCambiarEstado.Location = new Point(284, 8);
+            btnCambiarEstado.Name = "btnCambiarEstado";
+            btnCambiarEstado.Size = new Size(130, 64);
+            btnCambiarEstado.TabIndex = 2;
+            btnCambiarEstado.Text = "Dar de baja (F4)";
+            btnCambiarEstado.UseVisualStyleBackColor = true;
+            //
             // btnResetearClave
-            // 
-            btnResetearClave.BackColor = SystemColors.Control;
-            btnResetearClave.Location = new Point(437, 4);
-            btnResetearClave.Margin = new Padding(5, 4, 5, 4);
+            //
+            btnResetearClave.Location = new Point(420, 8);
             btnResetearClave.Name = "btnResetearClave";
-            btnResetearClave.Size = new Size(162, 47);
-            btnResetearClave.TabIndex = 14;
-            btnResetearClave.Text = "Resetear clave";
-            btnResetearClave.UseVisualStyleBackColor = false;
-            btnResetearClave.Click += btnResetear_Click;
-            // 
-            // btnModificar
-            // 
-            btnModificar.BackColor = SystemColors.Control;
-            btnModificar.Location = new Point(148, 4);
-            btnModificar.Margin = new Padding(5, 4, 5, 4);
-            btnModificar.Name = "btnModificar";
-            btnModificar.Size = new Size(120, 47);
-            btnModificar.TabIndex = 11;
-            btnModificar.Text = "Modificar";
-            btnModificar.UseVisualStyleBackColor = false;
-            btnModificar.Click += btnModificar_Click;
-            // 
-            // btnEliminar
-            // 
-            btnEliminar.BackColor = SystemColors.Control;
-            btnEliminar.Location = new Point(295, 4);
-            btnEliminar.Margin = new Padding(5, 4, 5, 4);
-            btnEliminar.Name = "btnEliminar";
-            btnEliminar.Size = new Size(120, 47);
-            btnEliminar.TabIndex = 12;
-            btnEliminar.Text = "Eliminar";
-            btnEliminar.UseVisualStyleBackColor = false;
-            btnEliminar.Click += btnEliminar_Click;
-            // 
-            // btnVolver
-            // 
-            btnVolver.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            btnVolver.BackColor = SystemColors.Control;
-            btnVolver.Location = new Point(1073, 642);
-            btnVolver.Margin = new Padding(5, 4, 5, 4);
-            btnVolver.Name = "btnVolver";
-            btnVolver.Size = new Size(120, 47);
-            btnVolver.TabIndex = 13;
-            btnVolver.Text = "Volver";
-            btnVolver.UseVisualStyleBackColor = false;
-            btnVolver.Click += btnVolver_Click;
-            // 
-            // gbFiltrar
-            // 
-            gbFiltrar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            gbFiltrar.Controls.Add(btnFiltrar);
-            gbFiltrar.Controls.Add(cbEstados);
-            gbFiltrar.Controls.Add(label3);
-            gbFiltrar.Controls.Add(label1);
-            gbFiltrar.Controls.Add(cbGrupos);
-            gbFiltrar.Controls.Add(label2);
-            gbFiltrar.Controls.Add(txtNombre);
-            gbFiltrar.Location = new Point(12, 84);
-            gbFiltrar.Margin = new Padding(5, 4, 5, 4);
-            gbFiltrar.Name = "gbFiltrar";
-            gbFiltrar.Padding = new Padding(5, 4, 5, 4);
-            gbFiltrar.Size = new Size(1181, 104);
-            gbFiltrar.TabIndex = 16;
-            gbFiltrar.TabStop = false;
-            gbFiltrar.Text = "Filtrar";
-            // 
-            // btnFiltrar
-            // 
-            btnFiltrar.Location = new Point(926, 36);
-            btnFiltrar.Margin = new Padding(5, 4, 5, 4);
-            btnFiltrar.Name = "btnFiltrar";
-            btnFiltrar.Size = new Size(120, 47);
-            btnFiltrar.TabIndex = 9;
-            btnFiltrar.Text = "Buscar";
-            btnFiltrar.UseVisualStyleBackColor = true;
-            btnFiltrar.Click += btnFiltrar_Click;
-            // 
-            // cbEstados
-            // 
-            cbEstados.FormattingEnabled = true;
-            cbEstados.Location = new Point(719, 46);
-            cbEstados.Margin = new Padding(5, 4, 5, 4);
-            cbEstados.Name = "cbEstados";
-            cbEstados.Size = new Size(181, 28);
-            cbEstados.TabIndex = 8;
-            cbEstados.SelectedIndexChanged += cbEstados_SelectedIndexChanged;
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.Location = new Point(652, 54);
-            label3.Margin = new Padding(5, 0, 5, 0);
-            label3.Name = "label3";
-            label3.Size = new Size(57, 20);
-            label3.TabIndex = 7;
-            label3.Tag = "BLANCO";
-            label3.Text = "Estado:";
-            // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new Point(388, 55);
-            label1.Margin = new Padding(5, 0, 5, 0);
-            label1.Name = "label1";
-            label1.Size = new Size(53, 20);
-            label1.TabIndex = 6;
-            label1.Tag = "BLANCO";
-            label1.Text = "Grupo:";
-            // 
-            // cbGrupos
-            // 
-            cbGrupos.FormattingEnabled = true;
-            cbGrupos.Location = new Point(451, 48);
-            cbGrupos.Margin = new Padding(5, 4, 5, 4);
-            cbGrupos.Name = "cbGrupos";
-            cbGrupos.Size = new Size(181, 28);
-            cbGrupos.TabIndex = 5;
-            cbGrupos.SelectedIndexChanged += cbGrupos_SelectedIndexChanged;
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new Point(10, 54);
-            label2.Margin = new Padding(5, 0, 5, 0);
-            label2.Name = "label2";
-            label2.Size = new Size(67, 20);
-            label2.TabIndex = 3;
-            label2.Tag = "BLANCO";
-            label2.Text = "Nombre:";
-            // 
-            // txtNombre
-            // 
-            txtNombre.Location = new Point(87, 48);
-            txtNombre.Margin = new Padding(5, 4, 5, 4);
-            txtNombre.Name = "txtNombre";
-            txtNombre.Size = new Size(291, 27);
-            txtNombre.TabIndex = 1;
-            txtNombre.TextChanged += txtNombre_TextChanged;
-            // 
-            // dgvUsuarios
-            // 
-            dgvUsuarios.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dgvUsuarios.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvUsuarios.BackgroundColor = SystemColors.Control;
-            dgvUsuarios.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvUsuarios.Location = new Point(12, 210);
-            dgvUsuarios.Name = "dgvUsuarios";
-            dgvUsuarios.ReadOnly = true;
-            dgvUsuarios.RowHeadersWidth = 51;
-            dgvUsuarios.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvUsuarios.Size = new Size(1181, 425);
-            dgvUsuarios.TabIndex = 10;
-            // 
+            btnResetearClave.Size = new Size(130, 64);
+            btnResetearClave.TabIndex = 3;
+            btnResetearClave.Text = "Resetear clave (Ctrl+R)";
+            btnResetearClave.UseVisualStyleBackColor = true;
+            //
+            // btnDesbloquear
+            //
+            btnDesbloquear.Location = new Point(556, 8);
+            btnDesbloquear.Name = "btnDesbloquear";
+            btnDesbloquear.Size = new Size(130, 64);
+            btnDesbloquear.TabIndex = 4;
+            btnDesbloquear.Text = "Desbloquear";
+            btnDesbloquear.UseVisualStyleBackColor = true;
+            //
+            // btnExportar
+            //
+            btnExportar.Location = new Point(692, 8);
+            btnExportar.Name = "btnExportar";
+            btnExportar.Size = new Size(130, 64);
+            btnExportar.TabIndex = 5;
+            btnExportar.Text = "Exportar a Excel";
+            btnExportar.UseVisualStyleBackColor = true;
+            //
+            // btnImprimir
+            //
+            btnImprimir.Location = new Point(828, 8);
+            btnImprimir.Name = "btnImprimir";
+            btnImprimir.Size = new Size(130, 64);
+            btnImprimir.TabIndex = 6;
+            btnImprimir.Text = "Imprimir (Ctrl+P)";
+            btnImprimir.UseVisualStyleBackColor = true;
+            //
+            // btnSalir
+            //
+            btnSalir.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSalir.Location = new Point(1295, 8);
+            btnSalir.Name = "btnSalir";
+            btnSalir.Size = new Size(120, 64);
+            btnSalir.TabIndex = 7;
+            btnSalir.Text = "Volver";
+            btnSalir.UseVisualStyleBackColor = true;
+            //
+            // panelFiltros
+            //
+            panelFiltros.Controls.Add(lblBuscar);
+            panelFiltros.Controls.Add(txtBuscar);
+            panelFiltros.Controls.Add(lblEstado);
+            panelFiltros.Controls.Add(cbEstado);
+            panelFiltros.Controls.Add(lblFiltroExtra);
+            panelFiltros.Controls.Add(cbFiltroExtra);
+            panelFiltros.Controls.Add(chkSoloBloqueados);
+            panelFiltros.Controls.Add(btnLimpiarFiltros);
+            panelFiltros.Dock = DockStyle.Top;
+            panelFiltros.Location = new Point(0, 80);
+            panelFiltros.Name = "panelFiltros";
+            panelFiltros.Size = new Size(1427, 70);
+            panelFiltros.TabIndex = 1;
+            //
+            // lblBuscar
+            //
+            lblBuscar.AutoSize = true;
+            lblBuscar.Location = new Point(12, 6);
+            lblBuscar.Name = "lblBuscar";
+            lblBuscar.Size = new Size(220, 20);
+            lblBuscar.TabIndex = 0;
+            lblBuscar.Tag = "BLANCO";
+            lblBuscar.Text = "Buscar (usuario, nombre o email)";
+            //
+            // txtBuscar
+            //
+            txtBuscar.Location = new Point(12, 32);
+            txtBuscar.Name = "txtBuscar";
+            txtBuscar.Size = new Size(380, 27);
+            txtBuscar.TabIndex = 0;
+            //
+            // lblEstado
+            //
+            lblEstado.AutoSize = true;
+            lblEstado.Location = new Point(406, 6);
+            lblEstado.Name = "lblEstado";
+            lblEstado.Size = new Size(54, 20);
+            lblEstado.TabIndex = 2;
+            lblEstado.Tag = "BLANCO";
+            lblEstado.Text = "Estado";
+            //
+            // cbEstado
+            //
+            cbEstado.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbEstado.Location = new Point(406, 31);
+            cbEstado.Name = "cbEstado";
+            cbEstado.Size = new Size(160, 28);
+            cbEstado.TabIndex = 1;
+            //
+            // lblFiltroExtra
+            //
+            lblFiltroExtra.AutoSize = true;
+            lblFiltroExtra.Location = new Point(580, 6);
+            lblFiltroExtra.Name = "lblFiltroExtra";
+            lblFiltroExtra.Size = new Size(52, 20);
+            lblFiltroExtra.TabIndex = 4;
+            lblFiltroExtra.Tag = "BLANCO";
+            lblFiltroExtra.Text = "Grupo";
+            //
+            // cbFiltroExtra
+            //
+            cbFiltroExtra.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbFiltroExtra.Location = new Point(580, 31);
+            cbFiltroExtra.Name = "cbFiltroExtra";
+            cbFiltroExtra.Size = new Size(220, 28);
+            cbFiltroExtra.TabIndex = 2;
+            //
+            // chkSoloBloqueados
+            //
+            chkSoloBloqueados.AutoSize = true;
+            chkSoloBloqueados.Location = new Point(814, 34);
+            chkSoloBloqueados.Name = "chkSoloBloqueados";
+            chkSoloBloqueados.Size = new Size(140, 24);
+            chkSoloBloqueados.TabIndex = 3;
+            chkSoloBloqueados.Text = "Sólo bloqueados";
+            chkSoloBloqueados.UseVisualStyleBackColor = true;
+            //
+            // btnLimpiarFiltros
+            //
+            btnLimpiarFiltros.Location = new Point(970, 26);
+            btnLimpiarFiltros.Name = "btnLimpiarFiltros";
+            btnLimpiarFiltros.Size = new Size(140, 38);
+            btnLimpiarFiltros.TabIndex = 4;
+            btnLimpiarFiltros.Text = "Limpiar filtros";
+            btnLimpiarFiltros.UseVisualStyleBackColor = true;
+            //
+            // dgvListado
+            //
+            dgvListado.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvListado.Dock = DockStyle.Fill;
+            dgvListado.Location = new Point(0, 150);
+            dgvListado.Name = "dgvListado";
+            dgvListado.RowHeadersWidth = 51;
+            dgvListado.Size = new Size(1427, 575);
+            dgvListado.TabIndex = 2;
+            //
+            // lblResumen
+            //
+            lblResumen.Dock = DockStyle.Bottom;
+            lblResumen.Location = new Point(0, 725);
+            lblResumen.Name = "lblResumen";
+            lblResumen.Padding = new Padding(8, 0, 0, 0);
+            lblResumen.Size = new Size(1427, 28);
+            lblResumen.TabIndex = 3;
+            lblResumen.TextAlign = ContentAlignment.MiddleLeft;
+            //
             // FrmGestionarUsuarios
-            // 
+            //
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1210, 693);
+            ClientSize = new Size(1427, 753);
             ControlBox = false;
-            Controls.Add(dgvUsuarios);
-            Controls.Add(gbFiltrar);
-            Controls.Add(btnVolver);
-            Controls.Add(panel1);
+            Controls.Add(dgvListado);
+            Controls.Add(lblResumen);
+            Controls.Add(panelFiltros);
+            Controls.Add(panelAcciones);
+            KeyPreview = true;
             Name = "FrmGestionarUsuarios";
             Text = "USUARIOS";
-            panel1.ResumeLayout(false);
-            gbFiltrar.ResumeLayout(false);
-            gbFiltrar.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)dgvUsuarios).EndInit();
+            Load += FrmGestionarUsuarios_Load;
+            panelAcciones.ResumeLayout(false);
+            panelFiltros.ResumeLayout(false);
+            panelFiltros.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvListado).EndInit();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private Panel panel1;
-        private Button btnVolver;
-        private Button btnEliminar;
-        private Button btnModificar;
-        private Button btnAgregar;
+        private Panel panelAcciones;
+        private Button btnNuevo;
+        private Button btnEditar;
+        private Button btnCambiarEstado;
         private Button btnResetearClave;
-        private GroupBox gbFiltrar;
-        private TextBox txtNombre;
-        private Label label2;
-        private ComboBox cbEstados;
-        private Label label3;
-        private Label label1;
-        private ComboBox cbGrupos;
-        private Button btnFiltrar;
-        private DataGridView dgvUsuarios;
+        private Button btnDesbloquear;
+        private Button btnExportar;
+        private Button btnImprimir;
+        private Button btnSalir;
+        private Panel panelFiltros;
+        private Label lblBuscar;
+        private TextBox txtBuscar;
+        private Label lblEstado;
+        private ComboBox cbEstado;
+        private Label lblFiltroExtra;
+        private ComboBox cbFiltroExtra;
+        private CheckBox chkSoloBloqueados;
+        private Button btnLimpiarFiltros;
+        private DataGridView dgvListado;
+        private Label lblResumen;
     }
 }

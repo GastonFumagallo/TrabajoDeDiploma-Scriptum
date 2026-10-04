@@ -43,6 +43,8 @@ Severidad: 🔴 crítica · 🟠 alta · 🟡 media.
 | 17 | 🟡 | Los mensajes de recuperación y login revelaban qué usuarios existen. | ✅ Mensajes genéricos. El login con un usuario inexistente tarda lo mismo que con uno real. |
 | 18 | 🟡 | "Grupo activo" se decidía de tres formas distintas: `EST_GRU_ID == 1` (login y `PermisoService`) y un estado "Deshabilitado" que no existía (`Usuario.getAllGruposActivos`). No había forma de deshabilitar un grupo. | ✅ `Grupo.EstaActivo` (por nombre: `Estado_Grupo.Activo`) en todos lados, y la migración `GestionGrupos` crea el estado "Inactivo". |
 | 19 | 🟡 | En `FrmGrupo`, marcar un módulo o formulario en el árbol **no guardaba nada** (sin `AfterCheck`; se leían solo las hojas). Eliminar un grupo no pedía confirmación. | ✅ Gestión de grupos master-detail sobre `GrupoService` (ver abajo). |
+| 20 | 🟡 | La grilla de usuarios no mostraba los grupos ni el último acceso, no había forma de desbloquear ni de reactivar desde el listado, y el alta se rechazaba entera si el email no salía. | ✅ Gestión de usuarios sobre `UsuarioService` (ver abajo). |
+| 21 | 🟡 | La FK real de Usuario → Persona era la columna sombra `USU_PersonaPER_ID` (`PER_ID` podía valer 0), y `AuditoriaSesiones` guardaba el usuario dos veces (`AS_USU_ID` y la sombra `AS_UsuarioUSU_ID`). El email no era único en la base. | ✅ Migración `GestionUsuarios`: `PER_ID` y `AS_USU_ID` son las FK reales e índice único en `USU_Mail`. |
 | — | ✅ | **Inyección SQL**: todo pasa por LINQ (parametrizado). El único SQL manual (`FromSqlInterpolated` en `OrdenReposicionService`) también se parametriza. | Sin cambios. |
 
 ## Checklist para cualquier cambio de seguridad
@@ -94,9 +96,9 @@ public void AnularVenta(int ventaId, string motivo)
    - Un login SQL de mínimo privilegio solo para la app (sin `db_owner`) y que los usuarios de Windows no tengan acceso a la base.
    - Permisos por tabla o procedimientos almacenados para las operaciones sensibles.
    - A futuro, una API intermedia (3 capas), para que el cliente nunca tenga credenciales de la base.
-4. **Proteger al último administrador**: impedir dar de baja o quitar del grupo al último usuario administrador activo.
+4. ~~**Proteger al último administrador**~~ ✅ Hecho en `UsuarioService`: no se puede dar de baja ni quitar del grupo al último administrador activo.
 5. **Límite de solicitudes de recuperación** (por ejemplo, una cada 5 minutos por usuario) para evitar inundar casillas de email.
-6. **Acceso voluntario a "Cambiar clave"** desde el menú. `FrmCambiarClave` ya lo soporta con `new FrmCambiarClave(Sesion.Instancia.Usuario.USU_ID)`.
+6. ~~**Acceso voluntario a "Cambiar clave"**~~ ✅ Botón "Mi clave" en el menú.
 7. **Pantalla de consulta de `AuditoriaSeguridad`** con filtros por fecha, usuario y evento.
 8. **Marca de administrador**: reemplazar el chequeo por nombre de grupo por una acción explícita (por ejemplo, `AdministrarSistema`) o una columna `GRU_EsAdministrador`.
 
@@ -120,6 +122,11 @@ dotnet ef database update --project Modelo --startup-project Vista
 - Crea los estados de grupo "Activo" e "Inactivo" si faltan.
 - Agrega el índice único en `GRU_Nombre`.
 
+`20261004193506_GestionUsuarios`:
+- `PER_ID` pasa a ser la FK real hacia `Personas` y `AS_USU_ID` hacia `Usuarios` (se copian las columnas sombra antes de borrarlas; la de sesiones sigue en `Restrict`).
+- Agrega `USU_UltimoAcceso` y `USU_Version` (concurrencia optimista).
+- Depura emails duplicados y agrega el índice único en `USU_Mail`.
+
 ## Gestión de grupos
 
 `FrmGestionarGrupos` es master-detail (listado con búsqueda en vivo a la izquierda; ficha con árbol de permisos y usuarios del grupo a la derecha) y no usa `DbContext`: todo pasa por `GrupoService` (`Controladora/Seguridad`), que concentra las reglas:
@@ -132,3 +139,17 @@ dotnet ef database update --project Modelo --startup-project Vista
 - Altas, cambios y bajas quedan en `AuditoriaSeguridad`.
 
 El árbol (`Vista/Comun/ArbolPermisos`) guarda la selección en un `HashSet` (filtrar o recargar no la pierde), propaga padre/hijos, muestra el conteo por nodo y corrige el doble clic del TreeView nativo.
+
+## Gestión de usuarios
+
+`FrmGestionarUsuarios` usa `ListadoAbm` (búsqueda en vivo, filtros por estado, grupo y "sólo bloqueados", F2/F3/F4, exportar e imprimir) y `FrmEditarUsuario` usa `EdicionAbm` (un único modal de alta y edición, con `ErrorProvider`). Ninguno usa `DbContext`: todo pasa por `UsuarioService` (`Controladora/Seguridad`). El login, el cambio de clave propio y la recuperación siguen en `ControladoraUsuarios`.
+
+- La grilla nunca recibe datos de la clave. Columnas: usuario, nombre, email, grupos (concatenados en SQL con `STRING_AGG`), estado (activo, inactivo, bloqueado o con clave temporal) y último acceso.
+- La ficha no tiene campo de clave: en el alta la genera el servicio y se envía por email **después** de guardar. Si el email no sale, la cuenta igual se crea y la clave temporal se muestra una única vez al operador (`FrmClaveTemporal`) para entregarla en mano.
+- El nombre de usuario no se edita después del alta (ventas, movimientos y órdenes lo guardan como texto).
+- Permisos heredados de los grupos en gris en el árbol (no se pueden quitar desde la ficha); los directos se marcan aparte.
+- `PermisoService.Exigir` en alta, edición, baja/reactivación (`EliminarUsuario`), reseteo (`ResetearClave`) y desbloqueo (`ModificarUsuario`).
+- Nadie cambia sus propios grupos o permisos ni se da de baja; siempre queda al menos un administrador activo.
+- Baja lógica con reactivación (un alta que coincide con una cuenta dada de baja ofrece reactivarla).
+- Concurrencia optimista con `USU_Version`.
+- Todo cambio queda en `AuditoriaSeguridad` (incluye `USUARIO_REACTIVADO` y `USUARIO_DESBLOQUEADO`).
