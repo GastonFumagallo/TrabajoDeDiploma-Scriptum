@@ -42,9 +42,25 @@ namespace Modelo.Contexto
         public virtual DbSet<PagoVenta> PagosVenta { get; set; }
         public virtual DbSet<DetalleOrdenReposicion> DetallesOrdenReposicion { get; set; }
         public virtual DbSet<MovimientoStock> MovimientosStock { get; set; }
+        public virtual DbSet<AuditoriaSeguridad> AuditoriaSeguridad { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // El login busca por nombre de usuario: tiene que ser único.
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.USU_Nombre)
+                .IsUnique();
+
+            // Borrar un usuario no puede borrar su historial de sesiones (antes era Cascade).
+            modelBuilder.Entity<AuditoriaSesion>()
+                .HasOne(a => a.AS_Usuario)
+                .WithMany()
+                .HasForeignKey("AS_UsuarioUSU_ID")
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AuditoriaSeguridad>()
+                .HasIndex(a => a.AUD_Fecha);
+
             // Clientes y proveedores: PER_ID es la FK real hacia Persona (antes EF usaba columnas sombra).
             modelBuilder.Entity<Cliente>()
                 .HasOne(c => c.CLI_Persona)

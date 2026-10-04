@@ -25,6 +25,9 @@ namespace Vista.Comun
                 case ValidacionException v:
                     MessageBox.Show(owner, v.Message, "Revise los datos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
+                case AccesoDenegadoException a:
+                    MessageBox.Show(owner, a.Message, "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 case ConcurrenciaException c:
                     MessageBox.Show(owner, c.Message, "Datos modificados por otro usuario", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;

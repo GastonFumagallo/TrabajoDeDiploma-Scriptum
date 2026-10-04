@@ -1,70 +1,61 @@
 ﻿using Controladora;
-using Modelo.Seguridad;
-using Servicios;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Text;
-using System.Windows.Forms;
+using Modelo;
+using Vista.Comun;
 
 namespace Vista.Seguridad
 {
+    /// <summary>
+    /// Cambio de clave del propio usuario. Con <c>obligatorio = true</c> se abre desde el login cuando la clave
+    /// actual es temporal: si se cancela, no se entra al sistema. La validación real la hace la controladora.
+    /// </summary>
     public partial class FrmCambiarClave : Form
     {
-        public FrmCambiarClave()
+        private readonly int usuarioId;
+
+        public FrmCambiarClave(int usuarioId, bool obligatorio = false)
         {
             InitializeComponent();
+            this.usuarioId = usuarioId;
+
+            foreach (var txt in new[] { txtClaveActual, txtClaveNueva, txtConfirmar })
+                txt.UseSystemPasswordChar = true;
+
+            Text = obligatorio ? "Debe elegir una clave nueva" : "Cambiar clave";
+            label1.Text = obligatorio ? "Clave recibida:" : "Clave actual:";
+            AcceptButton = btnAceptar;
+            CancelButton = btnCancelar;
         }
 
         private void btnAceptar_Click(object sender, EventArgs e)
         {
-            var clave = txtClaveActual.Text;
-            clave = ServiciosUsuario.EncriptarClave(clave);
-            if (!ValidarCampos())
+            if (txtClaveActual.Text == string.Empty || txtClaveNueva.Text == string.Empty || txtConfirmar.Text == string.Empty)
             {
-                MessageBox.Show("Debe completar todos los campos");
+                MessageBox.Show(this, "Debe completar todos los campos");
                 return;
             }
-            if (Sesion.Instancia.Usuario.USU_Clave == clave)
+            if (txtClaveNueva.Text != txtConfirmar.Text)
             {
-                if (txtClaveNueva.Text == txtConfirmar.Text)
-                {
-                    var claveNueva = ServiciosUsuario.EncriptarClave(txtClaveNueva.Text);
-                    Sesion.Instancia.Usuario.USU_Clave = claveNueva;
-                    var ok = ControladoraUsuarios.Instancia.ModificarUsuario(Sesion.Instancia.Usuario);
-                    if (ok)
-                    {
-                        MessageBox.Show("Clave modificada con éxito");
-                        this.Close();
-                    }
-                    else
-                    {
-                        MessageBox.Show("La accion no se pudo realizar");
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Las claves no coinciden");
-                }
+                MessageBox.Show(this, "Las claves no coinciden");
+                return;
             }
-            else
-            {
-                MessageBox.Show("Clave incorrecta");
-            }
-        }
 
-        bool ValidarCampos()
-        {
-            if (txtClaveActual.Text == string.Empty || txtClaveNueva.Text == string.Empty || txtConfirmar.Text == string.Empty)
-            { return false; }
-            return true;
+            try
+            {
+                ControladoraUsuarios.Instancia.CambiarClave(usuarioId, txtClaveActual.Text, txtClaveNueva.Text);
+            }
+            catch (Exception ex)
+            {
+                ManejadorErrores.Mostrar(this, ex, "No se pudo cambiar la clave.");
+                return;
+            }
+
+            MessageBox.Show(this, "Clave modificada con éxito");
+            DialogResult = DialogResult.OK;
         }
 
         private void btnCancelar_Click(object sender, EventArgs e)
         {
-            this.Close();
+            DialogResult = DialogResult.Cancel;
         }
     }
 }

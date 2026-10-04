@@ -1,6 +1,7 @@
 ﻿using Controladora;
 using Modelo.Seguridad;
 using Servicios;
+using Vista.Comun;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -136,7 +137,7 @@ namespace Vista.Seguridad
                 USU_Nombre = txtUsuario.Text,
                 USU_Mail = txtEmail.Text,
                 Estado_Usuario = (Estado_Usuario)cbEstados.SelectedItem,
-                USU_Clave = ServiciosUsuario.GenerarPassword(),
+                // La clave inicial la genera la controladora y se envía por email.
 
                 USU_Persona = new Persona
                 {
@@ -149,8 +150,15 @@ namespace Vista.Seguridad
 
             AplicarAccionesYGrupos();
 
-            var mensaje = ControladoraUsuarios.Instancia.AgregarUsuario(usuario);
-            MessageBox.Show(mensaje);
+            try
+            {
+                MessageBox.Show(this, ControladoraUsuarios.Instancia.AgregarUsuario(usuario));
+            }
+            catch (Exception ex)
+            {
+                ManejadorErrores.Mostrar(this, ex, "No se pudo agregar el usuario.");
+                return;
+            }
             VaciarTxt();
             this.Close();
         }
@@ -168,8 +176,16 @@ namespace Vista.Seguridad
 
             AplicarAccionesYGrupos();
 
-            var ok = ControladoraUsuarios.Instancia.ModificarUsuario(usuario);
-            MessageBox.Show(ok ? "Usuario modificado con éxito" : "El usuario no pudo ser modificado");
+            try
+            {
+                var ok = ControladoraUsuarios.Instancia.ModificarUsuario(usuario);
+                MessageBox.Show(this, ok ? "Usuario modificado con éxito" : "El usuario no pudo ser modificado");
+            }
+            catch (Exception ex)
+            {
+                ManejadorErrores.Mostrar(this, ex, "No se pudo modificar el usuario.");
+                return;
+            }
             this.Close();
         }
 

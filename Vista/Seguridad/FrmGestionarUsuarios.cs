@@ -1,6 +1,7 @@
 ﻿using Controladora;
 using Modelo.Seguridad;
 using Servicios;
+using Vista.Comun;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -101,9 +102,19 @@ namespace Vista.Seguridad
             if (dgvUsuarios.CurrentRow != null)
             {
                 var usuarioDTO = (UsuarioDTO)dgvUsuarios.CurrentRow.DataBoundItem;
-                var usuario = ControladoraUsuarios.Instancia.buscarUsuarioIndividual(usuarioDTO);
-                var msj = ControladoraUsuarios.Instancia.EliminarUsuario(usuario);
-                MessageBox.Show(msj);
+                if (MessageBox.Show(this, $"¿Dar de baja al usuario {usuarioDTO.Usuario}? No podrá volver a ingresar, " +
+                        "pero se conserva su historial.", "Dar de baja", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                    return;
+                try
+                {
+                    var usuario = ControladoraUsuarios.Instancia.buscarUsuarioIndividual(usuarioDTO);
+                    MessageBox.Show(this, ControladoraUsuarios.Instancia.DarDeBajaUsuario(usuario));
+                }
+                catch (Exception ex)
+                {
+                    ManejadorErrores.Mostrar(this, ex, "No se pudo dar de baja el usuario.");
+                }
             }
             LlenarGrilla();
         }
@@ -126,15 +137,15 @@ namespace Vista.Seguridad
 
             if (resul == DialogResult.Yes)
             {
-                string claveNueva = ServiciosUsuario.GenerarPassword();
-                var ok = ControladoraUsuarios.Instancia.ResetearClaveUsuario(usuario, claveNueva);
-                if (ok)
+                try
                 {
-                    MessageBox.Show("La nueva clave sera enviada a su E-mail registrado");
+                    MessageBox.Show(this, ControladoraUsuarios.Instancia.ResetearClaveUsuario(usuario)
+                        ? "Se envió una clave temporal a su email registrado. Deberá cambiarla al ingresar."
+                        : "No se pudo resetear la clave");
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.Show("No se pudo resetear la clave");
+                    ManejadorErrores.Mostrar(this, ex, "No se pudo resetear la clave.");
                 }
             }
         }
