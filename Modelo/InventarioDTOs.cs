@@ -180,9 +180,10 @@ namespace Modelo
         public string Contacto { get; set; } = string.Empty;
         public string? Telefono { get; set; }
         public string? Email { get; set; }
+        public bool Activo { get; set; } = true;
 
         public override string ToString() =>
-            string.IsNullOrWhiteSpace(Empresa) ? Contacto : $"{Empresa} ({Contacto})";
+            (string.IsNullOrWhiteSpace(Empresa) ? Contacto : $"{Empresa} ({Contacto})") + (Activo ? "" : " — INACTIVO");
     }
 
     /// <summary>Línea de la orden tal como la edita el formulario.</summary>

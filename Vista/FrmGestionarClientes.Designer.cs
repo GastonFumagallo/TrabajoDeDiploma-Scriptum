@@ -1,4 +1,4 @@
-﻿namespace Vista
+namespace Vista
 {
     partial class FrmGestionarClientes
     {
@@ -28,169 +28,233 @@
         /// </summary>
         private void InitializeComponent()
         {
-            panelSuperior = new Panel();
-            lblFiltrar = new Label();
-            btnFiltrar = new Button();
-            txtFiltrar = new TextBox();
-            btnBorrarFiltros = new Button();
-            btnEliminar = new Button();
-            btnModificar = new Button();
-            btnAgregar = new Button();
-            dgvClientes = new DataGridView();
+            panelAcciones = new Panel();
+            btnNuevo = new Button();
+            btnEditar = new Button();
+            btnCambiarEstado = new Button();
+            btnExportar = new Button();
+            btnImprimir = new Button();
             btnSalir = new Button();
-            panelSuperior.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)dgvClientes).BeginInit();
+            panelFiltros = new Panel();
+            lblBuscar = new Label();
+            txtBuscar = new TextBox();
+            lblEstado = new Label();
+            cbEstado = new ComboBox();
+            lblFiltroExtra = new Label();
+            cbFiltroExtra = new ComboBox();
+            btnLimpiarFiltros = new Button();
+            dgvListado = new DataGridView();
+            lblResumen = new Label();
+            panelAcciones.SuspendLayout();
+            panelFiltros.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvListado).BeginInit();
             SuspendLayout();
-            // 
-            // panelSuperior
-            // 
-            panelSuperior.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            panelSuperior.BackColor = SystemColors.ControlLightLight;
-            panelSuperior.Controls.Add(lblFiltrar);
-            panelSuperior.Controls.Add(btnFiltrar);
-            panelSuperior.Controls.Add(txtFiltrar);
-            panelSuperior.Controls.Add(btnBorrarFiltros);
-            panelSuperior.Controls.Add(btnEliminar);
-            panelSuperior.Controls.Add(btnModificar);
-            panelSuperior.Controls.Add(btnAgregar);
-            panelSuperior.Location = new Point(0, 0);
-            panelSuperior.Name = "panelSuperior";
-            panelSuperior.Size = new Size(1427, 82);
-            panelSuperior.TabIndex = 0;
-            // 
-            // lblFiltrar
-            // 
-            lblFiltrar.Anchor = AnchorStyles.Right;
-            lblFiltrar.AutoSize = true;
-            lblFiltrar.Location = new Point(1048, 9);
-            lblFiltrar.Name = "lblFiltrar";
-            lblFiltrar.Size = new Size(230, 20);
-            lblFiltrar.TabIndex = 6;
-            lblFiltrar.Tag = "BLANCO";
-            lblFiltrar.Text = "Filtrar por número de documento";
-            // 
-            // btnFiltrar
-            // 
-            btnFiltrar.Anchor = AnchorStyles.Right;
-            btnFiltrar.BackColor = SystemColors.Control;
-            btnFiltrar.Location = new Point(1284, 3);
-            btnFiltrar.Name = "btnFiltrar";
-            btnFiltrar.Size = new Size(120, 68);
-            btnFiltrar.TabIndex = 5;
-            btnFiltrar.Text = "Filtrar";
-            btnFiltrar.UseVisualStyleBackColor = false;
-            btnFiltrar.Click += btnFiltrar_Click;
-            // 
-            // txtFiltrar
-            // 
-            txtFiltrar.Anchor = AnchorStyles.Right;
-            txtFiltrar.Location = new Point(1048, 44);
-            txtFiltrar.Name = "txtFiltrar";
-            txtFiltrar.Size = new Size(230, 27);
-            txtFiltrar.TabIndex = 4;
-            txtFiltrar.TextChanged += txtFiltrar_TextChanged;
-            // 
-            // btnBorrarFiltros
-            // 
-            btnBorrarFiltros.Anchor = AnchorStyles.Right;
-            btnBorrarFiltros.BackColor = SystemColors.Control;
-            btnBorrarFiltros.Location = new Point(922, 3);
-            btnBorrarFiltros.Name = "btnBorrarFiltros";
-            btnBorrarFiltros.Size = new Size(120, 68);
-            btnBorrarFiltros.TabIndex = 3;
-            btnBorrarFiltros.Text = "Borrar Filtros";
-            btnBorrarFiltros.UseVisualStyleBackColor = false;
-            btnBorrarFiltros.Click += btnBorrarFiltros_Click;
-            // 
-            // btnEliminar
-            // 
-            btnEliminar.BackColor = SystemColors.Control;
-            btnEliminar.Location = new Point(264, 3);
-            btnEliminar.Name = "btnEliminar";
-            btnEliminar.Size = new Size(120, 68);
-            btnEliminar.TabIndex = 2;
-            btnEliminar.Text = "Eliminar";
-            btnEliminar.UseVisualStyleBackColor = false;
-            btnEliminar.Click += btnEliminar_Click;
-            // 
-            // btnModificar
-            // 
-            btnModificar.BackColor = SystemColors.Control;
-            btnModificar.Location = new Point(138, 3);
-            btnModificar.Name = "btnModificar";
-            btnModificar.Size = new Size(120, 68);
-            btnModificar.TabIndex = 1;
-            btnModificar.Text = "Modificar";
-            btnModificar.UseVisualStyleBackColor = false;
-            btnModificar.Click += btnModificar_Click;
-            // 
-            // btnAgregar
-            // 
-            btnAgregar.BackColor = SystemColors.Control;
-            btnAgregar.Location = new Point(12, 3);
-            btnAgregar.Name = "btnAgregar";
-            btnAgregar.Size = new Size(120, 68);
-            btnAgregar.TabIndex = 0;
-            btnAgregar.Text = "Agregar";
-            btnAgregar.UseVisualStyleBackColor = false;
-            btnAgregar.Click += btnAgregar_Click;
-            // 
-            // dgvClientes
-            // 
-            dgvClientes.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dgvClientes.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvClientes.BackgroundColor = SystemColors.Control;
-            dgvClientes.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvClientes.Location = new Point(12, 133);
-            dgvClientes.Name = "dgvClientes";
-            dgvClientes.ReadOnly = true;
-            dgvClientes.RowHeadersWidth = 51;
-            dgvClientes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvClientes.Size = new Size(1403, 530);
-            dgvClientes.TabIndex = 1;
-            // 
+            //
+            // panelAcciones
+            //
+            panelAcciones.Controls.Add(btnNuevo);
+            panelAcciones.Controls.Add(btnEditar);
+            panelAcciones.Controls.Add(btnCambiarEstado);
+            panelAcciones.Controls.Add(btnExportar);
+            panelAcciones.Controls.Add(btnImprimir);
+            panelAcciones.Controls.Add(btnSalir);
+            panelAcciones.Dock = DockStyle.Top;
+            panelAcciones.Location = new Point(0, 0);
+            panelAcciones.Name = "panelAcciones";
+            panelAcciones.Size = new Size(1427, 80);
+            panelAcciones.TabIndex = 0;
+            //
+            // btnNuevo
+            //
+            btnNuevo.Location = new Point(12, 8);
+            btnNuevo.Name = "btnNuevo";
+            btnNuevo.Size = new Size(130, 64);
+            btnNuevo.TabIndex = 0;
+            btnNuevo.Text = "Nuevo (F2)";
+            btnNuevo.UseVisualStyleBackColor = true;
+            //
+            // btnEditar
+            //
+            btnEditar.Location = new Point(148, 8);
+            btnEditar.Name = "btnEditar";
+            btnEditar.Size = new Size(130, 64);
+            btnEditar.TabIndex = 1;
+            btnEditar.Text = "Modificar (F3)";
+            btnEditar.UseVisualStyleBackColor = true;
+            //
+            // btnCambiarEstado
+            //
+            btnCambiarEstado.Location = new Point(284, 8);
+            btnCambiarEstado.Name = "btnCambiarEstado";
+            btnCambiarEstado.Size = new Size(130, 64);
+            btnCambiarEstado.TabIndex = 2;
+            btnCambiarEstado.Text = "Dar de baja (F4)";
+            btnCambiarEstado.UseVisualStyleBackColor = true;
+            //
+            // btnExportar
+            //
+            btnExportar.Location = new Point(420, 8);
+            btnExportar.Name = "btnExportar";
+            btnExportar.Size = new Size(130, 64);
+            btnExportar.TabIndex = 3;
+            btnExportar.Text = "Exportar a Excel";
+            btnExportar.UseVisualStyleBackColor = true;
+            //
+            // btnImprimir
+            //
+            btnImprimir.Location = new Point(556, 8);
+            btnImprimir.Name = "btnImprimir";
+            btnImprimir.Size = new Size(130, 64);
+            btnImprimir.TabIndex = 4;
+            btnImprimir.Text = "Imprimir (Ctrl+P)";
+            btnImprimir.UseVisualStyleBackColor = true;
+            //
             // btnSalir
-            // 
-            btnSalir.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            btnSalir.BackColor = SystemColors.Control;
-            btnSalir.Location = new Point(1295, 702);
+            //
+            btnSalir.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSalir.Location = new Point(1295, 8);
             btnSalir.Name = "btnSalir";
-            btnSalir.Size = new Size(120, 68);
-            btnSalir.TabIndex = 8;
-            btnSalir.Text = "Salir";
-            btnSalir.UseVisualStyleBackColor = false;
-            btnSalir.Click += btnSalir_Click;
-            // 
+            btnSalir.Size = new Size(120, 64);
+            btnSalir.TabIndex = 5;
+            btnSalir.Text = "Volver";
+            btnSalir.UseVisualStyleBackColor = true;
+            //
+            // panelFiltros
+            //
+            panelFiltros.Controls.Add(lblBuscar);
+            panelFiltros.Controls.Add(txtBuscar);
+            panelFiltros.Controls.Add(lblEstado);
+            panelFiltros.Controls.Add(cbEstado);
+            panelFiltros.Controls.Add(lblFiltroExtra);
+            panelFiltros.Controls.Add(cbFiltroExtra);
+            panelFiltros.Controls.Add(btnLimpiarFiltros);
+            panelFiltros.Dock = DockStyle.Top;
+            panelFiltros.Location = new Point(0, 80);
+            panelFiltros.Name = "panelFiltros";
+            panelFiltros.Size = new Size(1427, 70);
+            panelFiltros.TabIndex = 1;
+            //
+            // lblBuscar
+            //
+            lblBuscar.AutoSize = true;
+            lblBuscar.Location = new Point(12, 6);
+            lblBuscar.Name = "lblBuscar";
+            lblBuscar.Size = new Size(220, 20);
+            lblBuscar.TabIndex = 0;
+            lblBuscar.Tag = "BLANCO";
+            lblBuscar.Text = "Buscar (DNI/CUIT, nombre, email o localidad)";
+            //
+            // txtBuscar
+            //
+            txtBuscar.Location = new Point(12, 32);
+            txtBuscar.Name = "txtBuscar";
+            txtBuscar.Size = new Size(380, 27);
+            txtBuscar.TabIndex = 0;
+            //
+            // lblEstado
+            //
+            lblEstado.AutoSize = true;
+            lblEstado.Location = new Point(406, 6);
+            lblEstado.Name = "lblEstado";
+            lblEstado.Size = new Size(54, 20);
+            lblEstado.TabIndex = 2;
+            lblEstado.Tag = "BLANCO";
+            lblEstado.Text = "Estado";
+            //
+            // cbEstado
+            //
+            cbEstado.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbEstado.Location = new Point(406, 31);
+            cbEstado.Name = "cbEstado";
+            cbEstado.Size = new Size(160, 28);
+            cbEstado.TabIndex = 1;
+            //
+            // lblFiltroExtra
+            //
+            lblFiltroExtra.AutoSize = true;
+            lblFiltroExtra.Location = new Point(580, 6);
+            lblFiltroExtra.Name = "lblFiltroExtra";
+            lblFiltroExtra.Size = new Size(120, 20);
+            lblFiltroExtra.TabIndex = 4;
+            lblFiltroExtra.Tag = "BLANCO";
+            lblFiltroExtra.Text = "Localidad";
+            //
+            // cbFiltroExtra
+            //
+            cbFiltroExtra.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbFiltroExtra.Location = new Point(580, 31);
+            cbFiltroExtra.Name = "cbFiltroExtra";
+            cbFiltroExtra.Size = new Size(220, 28);
+            cbFiltroExtra.TabIndex = 2;
+            //
+            // btnLimpiarFiltros
+            //
+            btnLimpiarFiltros.Location = new Point(814, 26);
+            btnLimpiarFiltros.Name = "btnLimpiarFiltros";
+            btnLimpiarFiltros.Size = new Size(140, 38);
+            btnLimpiarFiltros.TabIndex = 3;
+            btnLimpiarFiltros.Text = "Limpiar filtros";
+            btnLimpiarFiltros.UseVisualStyleBackColor = true;
+            //
+            // dgvListado
+            //
+            dgvListado.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvListado.Dock = DockStyle.Fill;
+            dgvListado.Location = new Point(0, 150);
+            dgvListado.Name = "dgvListado";
+            dgvListado.RowHeadersWidth = 51;
+            dgvListado.Size = new Size(1427, 575);
+            dgvListado.TabIndex = 2;
+            //
+            // lblResumen
+            //
+            lblResumen.Dock = DockStyle.Bottom;
+            lblResumen.Location = new Point(0, 725);
+            lblResumen.Name = "lblResumen";
+            lblResumen.Padding = new Padding(8, 0, 0, 0);
+            lblResumen.Size = new Size(1427, 28);
+            lblResumen.TabIndex = 3;
+            lblResumen.TextAlign = ContentAlignment.MiddleLeft;
+            //
             // FrmGestionarClientes
-            // 
+            //
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = SystemColors.Control;
-            ClientSize = new Size(1427, 782);
+            ClientSize = new Size(1427, 753);
             ControlBox = false;
-            Controls.Add(btnSalir);
-            Controls.Add(dgvClientes);
-            Controls.Add(panelSuperior);
+            Controls.Add(dgvListado);
+            Controls.Add(lblResumen);
+            Controls.Add(panelFiltros);
+            Controls.Add(panelAcciones);
+            KeyPreview = true;
             Name = "FrmGestionarClientes";
             Text = "CLIENTES";
             Load += FrmGestionarClientes_Load;
-            panelSuperior.ResumeLayout(false);
-            panelSuperior.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)dgvClientes).EndInit();
+            panelAcciones.ResumeLayout(false);
+            panelFiltros.ResumeLayout(false);
+            panelFiltros.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvListado).EndInit();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private Panel panelSuperior;
-        private Button btnAgregar;
-        private Label lblFiltrar;
-        private Button btnFiltrar;
-        private TextBox txtFiltrar;
-        private Button btnBorrarFiltros;
-        private Button btnEliminar;
-        private Button btnModificar;
-        private DataGridView dgvClientes;
+        private Panel panelAcciones;
+        private Button btnNuevo;
+        private Button btnEditar;
+        private Button btnCambiarEstado;
+        private Button btnExportar;
+        private Button btnImprimir;
         private Button btnSalir;
+        private Panel panelFiltros;
+        private Label lblBuscar;
+        private TextBox txtBuscar;
+        private Label lblEstado;
+        private ComboBox cbEstado;
+        private Label lblFiltroExtra;
+        private ComboBox cbFiltroExtra;
+        private Button btnLimpiarFiltros;
+        private DataGridView dgvListado;
+        private Label lblResumen;
     }
 }

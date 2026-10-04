@@ -92,7 +92,7 @@ namespace Vista
                 UseWaitCursor = true;
                 Enabled = false;
 
-                var proveedoresTask = OrdenReposicionService.Instancia.ObtenerProveedoresAsync(cts.Token);
+                var proveedoresTask = OrdenReposicionService.Instancia.ObtenerProveedoresAsync(incluirInactivos: true, cts.Token);
                 var catalogoTask = InventarioService.Instancia.ObtenerInventarioAsync(new FiltroInventario(), cts.Token);
                 await Task.WhenAll(proveedoresTask, catalogoTask);
                 proveedores = proveedoresTask.Result;

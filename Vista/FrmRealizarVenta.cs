@@ -39,11 +39,11 @@ namespace Vista
             public int StockMaximo { get; set; }
         }
 
-        /// <summary>Ítem del combo de clientes: texto buscable "Nombre — DNI".</summary>
+        /// <summary>Ítem del combo de clientes: texto buscable "Nombre — documento".</summary>
         private sealed record ClienteItem(ClienteDTO Cliente, bool EsConsumidorFinal)
         {
             public override string ToString() =>
-                EsConsumidorFinal ? Cliente.Nombre : $"{Cliente.Nombre} — DNI {Cliente.DNI}";
+                EsConsumidorFinal || Cliente.Documento == null ? Cliente.Nombre : $"{Cliente.Nombre} — {Cliente.Documento}";
         }
 
         /// <summary>Ítem de la lista de sugerencias de búsqueda.</summary>
@@ -137,20 +137,15 @@ namespace Vista
                 SeleccionarLibro(catalogo.FirstOrDefault(l => l.Id == libroSeleccionado.Id), moverFoco: false);
         }
 
-        private async Task CargarClientesAsync(int? seleccionarPersonaId = null)
+        private async Task CargarClientesAsync(int? seleccionarClienteId = null)
         {
-            var clientes = await ControladoraClientes.Instancia.ObtenerClientesGridAsync(cts.Token);
-            var cf = await ControladoraClientes.Instancia.ObtenerConsumidorFinalAsync(cts.Token);
-
-            consumidorFinal = new ClienteItem(cf, EsConsumidorFinal: true);
-            var items = new List<ClienteItem> { consumidorFinal };
-            items.AddRange(clientes
-                .Where(c => c.CLIDTO_ID != cf.CLIDTO_ID)
-                .OrderBy(c => c.Nombre)
-                .Select(c => new ClienteItem(c, EsConsumidorFinal: false)));
+            // Activos, con Consumidor Final primero (lo crea si no existe).
+            var clientes = await Controladora.Abm.ClienteService.Instancia.ObtenerParaVentaAsync(cts.Token);
+            var items = clientes.Select(c => new ClienteItem(c, c.EsConsumidorFinal)).ToList();
+            consumidorFinal = items.FirstOrDefault(i => i.EsConsumidorFinal);
 
             cbCliente.DataSource = items;
-            var aSeleccionar = items.FirstOrDefault(i => i.Cliente.CLIDTO_ID == (seleccionarPersonaId ?? clienteActual?.Cliente.CLIDTO_ID))
+            var aSeleccionar = items.FirstOrDefault(i => i.Cliente.CLIDTO_ID == (seleccionarClienteId ?? clienteActual?.Cliente.CLIDTO_ID))
                                ?? consumidorFinal;
             EstablecerCliente(aSeleccionar);
         }
@@ -226,16 +221,17 @@ namespace Vista
 
         private async Task AltaRapidaClienteAsync()
         {
-            var antes = (cbCliente.DataSource as List<ClienteItem>)?.Select(i => i.Cliente.CLIDTO_ID).ToHashSet() ?? new();
-            using (var frm = new FrmAgregarCliente())
-                frm.ShowDialog(this);
+            int? nuevoId;
+            using (var frm = new FrmEditarCliente(null))
+            {
+                if (frm.ShowDialog(this) != DialogResult.OK) return;
+                nuevoId = frm.ClienteId;
+            }
 
             try
             {
-                // Se recarga la lista y, si se dio de alta alguien, queda seleccionado.
-                var clientes = await ControladoraClientes.Instancia.ObtenerClientesGridAsync(cts.Token);
-                var nuevo = clientes.Where(c => !antes.Contains(c.CLIDTO_ID)).OrderByDescending(c => c.CLIDTO_ID).FirstOrDefault();
-                await CargarClientesAsync(nuevo?.CLIDTO_ID);
+                // Se recarga la lista y el cliente recién creado (o reactivado) queda seleccionado.
+                await CargarClientesAsync(nuevoId);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -763,7 +759,7 @@ namespace Vista
 
             var solicitud = new SolicitudVenta
             {
-                ClientePersonaId = cliente.EsConsumidorFinal ? null : cliente.Cliente.CLIDTO_ID,
+                ClienteId = cliente.EsConsumidorFinal ? null : cliente.Cliente.CLIDTO_ID,
                 MetodoPagoId = metodo.MP_ID,
                 PorcentajeDescuento = numDescuento.Value,
                 MontoRecibido = EsEfectivo ? numMontoRecibido.Value : null,

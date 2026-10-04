@@ -92,6 +92,93 @@ namespace Modelo
 
     #endregion
 
+    #region Proveedores
+
+    public sealed class FiltroProveedores : FiltroAbm
+    {
+        public string? CondicionFiscal { get; set; }
+    }
+
+    /// <summary>Fila de la grilla de proveedores.</summary>
+    public sealed class ProveedorListadoDTO
+    {
+        public int Id { get; set; }
+        public string? CUIT { get; set; }
+        public string CuitFormateado => Proveedor.FormatearCuit(CUIT) ?? "(sin CUIT)";
+        public string RazonSocial { get; set; } = string.Empty;
+        public string Contacto { get; set; } = string.Empty;
+        public string? Telefono { get; set; }
+        public string? Email { get; set; }
+        public string? CondicionFiscal { get; set; }
+        public int Libros { get; set; }
+        public int OrdenesActivas { get; set; }
+        public bool Activo { get; set; }
+        public string Estado => Activo ? "Activo" : "Inactivo";
+    }
+
+    /// <summary>Ficha completa de un proveedor para el modal de alta/edición. Id null = alta.</summary>
+    public sealed class ProveedorEdicionDTO
+    {
+        public int? Id { get; set; }
+        public string? CUIT { get; set; }
+        public string RazonSocial { get; set; } = string.Empty;
+        public string Contacto { get; set; } = string.Empty;
+        public string? Telefono { get; set; }
+        public string? Email { get; set; }
+        public string? Direccion { get; set; }
+        public string? CondicionFiscal { get; set; }
+        public string? Observaciones { get; set; }
+        public bool Activo { get; set; } = true;
+        public int Version { get; set; }
+    }
+
+    #endregion
+
+    #region Clientes
+
+    public sealed class FiltroClientes : FiltroAbm
+    {
+        public string? Localidad { get; set; }
+    }
+
+    /// <summary>Fila de la grilla de clientes.</summary>
+    public sealed class ClienteListadoDTO
+    {
+        public int Id { get; set; }
+        public string TipoDocumento { get; set; } = Modelo.TipoDocumento.DNI;
+        public string? Documento { get; set; }
+        public string DocumentoFormateado => Documento == null ? "—"
+            : TipoDocumento == Modelo.TipoDocumento.CUIT ? $"CUIT {Proveedor.FormatearCuit(Documento)}" : $"DNI {Documento}";
+        public string Nombre { get; set; } = string.Empty;
+        public string? Telefono { get; set; }
+        public string? Email { get; set; }
+        public string? Localidad { get; set; }
+        public decimal LimiteCredito { get; set; }
+        public int Ventas { get; set; }
+        public bool EsConsumidorFinal { get; set; }
+        public bool Activo { get; set; }
+        public string Estado => EsConsumidorFinal ? "Sistema" : Activo ? "Activo" : "Inactivo";
+    }
+
+    /// <summary>Ficha completa de un cliente para el modal de alta/edición. Id null = alta.</summary>
+    public sealed class ClienteEdicionDTO
+    {
+        public int? Id { get; set; }
+        public string TipoDocumento { get; set; } = Modelo.TipoDocumento.DNI;
+        public string? Documento { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string? Telefono { get; set; }
+        public string? Email { get; set; }
+        public string? Direccion { get; set; }
+        public string? Localidad { get; set; }
+        public decimal LimiteCredito { get; set; }
+        public bool EsConsumidorFinal { get; set; }
+        public bool Activo { get; set; } = true;
+        public int Version { get; set; }
+    }
+
+    #endregion
+
     /// <summary>Validaciones de formato de identificadores, compartidas por la UI y los servicios.</summary>
     public static class Identificadores
     {
@@ -124,6 +211,26 @@ namespace Modelo
         public static bool EsEmailValido(string? email) =>
             !string.IsNullOrWhiteSpace(email) &&
             System.Text.RegularExpressions.Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$");
+
+        /// <summary>Deja sólo los dígitos (para CUIT, DNI y teléfonos). Vacío → null.</summary>
+        public static string? SoloDigitos(string? texto)
+        {
+            var digitos = new string((texto ?? "").Where(char.IsDigit).ToArray());
+            return digitos.Length == 0 ? null : digitos;
+        }
+
+        /// <summary>DNI argentino: 7 u 8 dígitos, mayor a 0.</summary>
+        public static bool EsDniValido(string? dni)
+        {
+            var d = SoloDigitos(dni);
+            return d is { Length: 7 or 8 } && d.TrimStart('0').Length > 0;
+        }
+
+        /// <summary>Teléfono: dígitos con +, espacios, guiones o paréntesis; entre 6 y 15 dígitos.</summary>
+        public static bool EsTelefonoValido(string? telefono) =>
+            !string.IsNullOrWhiteSpace(telefono) &&
+            System.Text.RegularExpressions.Regex.IsMatch(telefono.Trim(), @"^\+?[\d\s\-\(\)]+$") &&
+            SoloDigitos(telefono)?.Length is >= 6 and <= 15;
 
         /// <summary>Valida un CUIT/CUIL argentino (11 dígitos) por su dígito verificador.</summary>
         public static bool EsCuitValido(string? cuit)

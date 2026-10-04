@@ -52,6 +52,27 @@ namespace Modelo.Contexto
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Clientes y proveedores: PER_ID es la FK real hacia Persona (antes EF usaba columnas sombra).
+            modelBuilder.Entity<Cliente>()
+                .HasOne(c => c.CLI_Persona)
+                .WithMany(p => p.Clientes)
+                .HasForeignKey(c => c.PER_ID);
+
+            modelBuilder.Entity<Cliente>()
+                .HasIndex(c => c.CLI_Documento)
+                .IsUnique()
+                .HasFilter("[CLI_Documento] IS NOT NULL");
+
+            modelBuilder.Entity<Proveedor>()
+                .HasOne(p => p.PER_Proveedor)
+                .WithMany(p => p.Profesores)
+                .HasForeignKey(p => p.PER_ID);
+
+            modelBuilder.Entity<Proveedor>()
+                .HasIndex(p => p.PROV_CUIT)
+                .IsUnique()
+                .HasFilter("[PROV_CUIT] IS NOT NULL");
+
             // Búsqueda por código de barras en el punto de venta.
             modelBuilder.Entity<Libro>()
                 .HasIndex(l => l.LIB_ISBN)

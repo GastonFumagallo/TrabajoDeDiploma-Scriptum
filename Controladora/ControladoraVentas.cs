@@ -90,7 +90,8 @@ namespace Controladora
                 string texto = filtro.Cliente.Trim();
                 // Se traduce a LIKE '%texto%' en SQL Server (la intercalación por defecto ya ignora mayúsculas).
                 query = query.Where(v => v.VEN_Cliente.CLI_Persona.PER_Nombre.Contains(texto)
-                                      || v.VEN_Cliente.CLI_Persona.PER_DNI.ToString().Contains(texto));
+                                      || v.VEN_Cliente.CLI_Persona.PER_DNI.ToString().Contains(texto)
+                                      || (v.VEN_Cliente.CLI_Documento != null && v.VEN_Cliente.CLI_Documento.Contains(texto)));
             }
 
             if (filtro.Desde is DateTime desde)

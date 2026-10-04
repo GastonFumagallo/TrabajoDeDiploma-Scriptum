@@ -12,7 +12,7 @@ namespace Controladora.Abm
     /// DbContext propio por operación, lecturas AsNoTracking con proyección a DTO, validación completa en el
     /// servicio (la UI valida antes sólo para dar feedback inmediato), baja lógica y concurrencia optimista.
     /// </summary>
-    public sealed class LibroService : ServicioAbmBase, IServicioAbm<LibroListadoDTO, LibroEdicionDTO, FiltroLibros>
+    public sealed class LibroService : ServicioAbmBase, ILibroService
     {
         private static LibroService? instancia;
         public static LibroService Instancia => instancia ??= new LibroService();
@@ -140,14 +140,9 @@ namespace Controladora.Abm
                 .ToListAsync(ct);
         }
 
-        public async Task<List<OpcionDTO>> ObtenerProveedoresAsync(CancellationToken ct = default)
-        {
-            await using var db = new Libreria();
-            return await db.Proveedores.AsNoTracking()
-                .Select(p => new OpcionDTO(p.PROV_ID, p.PROV_Empresa != "" ? p.PROV_Empresa : p.PER_Proveedor.PER_Nombre))
-                .OrderBy(o => o.Nombre)
-                .ToListAsync(ct);
-        }
+        /// <summary>Proveedores activos para asociar al libro.</summary>
+        public Task<List<OpcionDTO>> ObtenerProveedoresAsync(CancellationToken ct = default) =>
+            ProveedorService.Instancia.ObtenerOpcionesAsync(ct);
 
         #endregion
 

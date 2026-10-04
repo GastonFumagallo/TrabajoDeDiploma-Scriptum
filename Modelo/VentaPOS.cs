@@ -10,8 +10,8 @@ namespace Modelo
     /// <summary>Todo lo que la UI necesita mandar para registrar una venta.</summary>
     public sealed class SolicitudVenta
     {
-        /// <summary>PER_ID del cliente (<see cref="ClienteDTO.CLIDTO_ID"/>). null = Consumidor Final.</summary>
-        public int? ClientePersonaId { get; init; }
+        /// <summary>CLI_ID del cliente (<see cref="ClienteDTO.CLIDTO_ID"/>). null = Consumidor Final.</summary>
+        public int? ClienteId { get; init; }
         public int MetodoPagoId { get; init; }
         public decimal PorcentajeDescuento { get; init; }
         /// <summary>Importe entregado por el cliente. Sólo se exige en efectivo; en otros medios se toma el total.</summary>
