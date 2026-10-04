@@ -9,6 +9,11 @@ namespace Modelo.Seguridad
 {
     public partial class Grupo
     {
+        /// <summary>
+        /// Grupo de sistema con acceso total (ver PermisoService). No se puede renombrar, deshabilitar ni eliminar,
+        /// y el índice único sobre GRU_Nombre impide que otro grupo tome este nombre.
+        /// </summary>
+        public const string NombreAdministrador = "Administrador";
 
         public Grupo()
         {
@@ -34,6 +39,10 @@ namespace Modelo.Seguridad
         public virtual ICollection<Accion> Acciones { get; set; }
 
         public virtual ICollection<Usuario> Usuarios { get; set; }
+
+        /// <summary>Sus permisos cuentan para los usuarios. Requiere Estado_Grupo cargado.</summary>
+        [NotMapped]
+        public bool EstaActivo => Estado_Grupo?.EST_GRU_Nombre == Modelo.Seguridad.Estado_Grupo.Activo;
 
         public override string ToString()
         {
@@ -68,14 +77,6 @@ namespace Modelo.Seguridad
                 return false;
             }
         }
-    }
-
-    public class GrupoDTO
-    {
-        public int GRUDTO_ID { get; set; }
-        public string Nombre { get; set; }
-        public string Descripcion { get; set; }
-        public string EstadoGrupo { get; set; }
     }
 
 }

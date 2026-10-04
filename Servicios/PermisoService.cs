@@ -9,8 +9,7 @@ namespace Servicios
     /// </summary>
     public class PermisoService
     {
-        public const string GrupoAdministrador = "Administrador";
-        private const int EstadoGrupoActivo = 1;
+        public const string GrupoAdministrador = Grupo.NombreAdministrador;
 
         private static PermisoService _instancia;
 
@@ -29,7 +28,7 @@ namespace Servicios
         // Un grupo deshabilitado no otorga nada, tampoco el de administradores.
         private bool EsAdministrador =>
             UsuarioActual != null &&
-            UsuarioActual.Grupos.Any(g => g.GRU_Nombre == GrupoAdministrador && g.EST_GRU_ID == EstadoGrupoActivo);
+            UsuarioActual.Grupos.Any(g => g.GRU_Nombre == GrupoAdministrador && g.EstaActivo);
 
         public bool TienePermiso(string nombreAccion)
         {
