@@ -25,8 +25,9 @@ namespace Controladora
 
         public void AgregarGenero(Genero genero)
         {
-            Libreria.Contexto.Generos.Add(genero);
-            Libreria.Contexto.SaveChanges();
+            using var db = new Libreria();
+            db.Generos.Add(genero);
+            db.SaveChanges();
         }
 
 

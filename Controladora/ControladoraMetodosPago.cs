@@ -36,35 +36,38 @@ namespace Controladora
 
         public bool AgregarMetodo(MetodoPago metodoDePago)
         {
-            var metodoExistente = Libreria.Contexto.MetodosPago.FirstOrDefault(x => x.MP_Nombre == metodoDePago.MP_Nombre);
-            if (metodoExistente == null)
+            using var db = new Libreria();
+            if (db.MetodosPago.Any(x => x.MP_Nombre == metodoDePago.MP_Nombre))
             {
-                Libreria.Contexto.MetodosPago.Add(metodoDePago);
-                Libreria.Contexto.SaveChanges();
-                return true;
+                return false;
             }
-            return false;
+            db.MetodosPago.Add(metodoDePago);
+            db.SaveChanges();
+            return true;
         }
 
         public bool ModificarMetodo(MetodoPago metodoDePago)
         {
-            var metodoExistente = Libreria.Contexto.MetodosPago.FirstOrDefault(x => x.MP_ID == metodoDePago.MP_ID);
-            if (metodoExistente != null)
+            using var db = new Libreria();
+            var metodoExistente = db.MetodosPago.FirstOrDefault(x => x.MP_ID == metodoDePago.MP_ID);
+            if (metodoExistente == null)
             {
-                Libreria.Contexto.MetodosPago.Update(metodoDePago);
-                Libreria.Contexto.SaveChanges(true);
-                return true;
+                return false;
             }
-            return false;
+            db.Entry(metodoExistente).CurrentValues.SetValues(metodoDePago);
+            db.SaveChanges();
+            return true;
         }
 
         public ReadOnlyCollection<MetodoPago> obtenerMetodosPago()
         {
-            return Libreria.Contexto.MetodosPago.ToList().AsReadOnly();
+            using var db = new Libreria();
+            return db.MetodosPago.AsNoTracking().ToList().AsReadOnly();
         }
         public MetodoPago obtenerMetodoPagoPorID(int metodoPagoID)
         {
-            return Libreria.Contexto.MetodosPago.FirstOrDefault(p => p.MP_ID == metodoPagoID);
+            using var db = new Libreria();
+            return db.MetodosPago.AsNoTracking().FirstOrDefault(p => p.MP_ID == metodoPagoID);
         }
 
     }

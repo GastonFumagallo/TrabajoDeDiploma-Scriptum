@@ -28,6 +28,7 @@ namespace Vista
 
         private readonly Dictionary<Type, Seccion> secciones;
         private Form? seccionActual;
+        private bool sesionExpirada;
 
         /// <summary>true si el usuario cerró la aplicación; false si solo cerró la sesión.</summary>
         public bool SalirDeLaAplicacion { get; private set; }
@@ -52,6 +53,10 @@ namespace Vista
             };
 
             FormClosing += FrmMenu_FormClosing;
+
+            // ControladoraSesiones es un singleton: si no nos desuscribimos, retiene a este menú para siempre.
+            ControladoraSesiones.Instancia.OnSesionExpirada += SesionExpirada;
+            FormClosed += (_, _) => ControladoraSesiones.Instancia.OnSesionExpirada -= SesionExpirada;
         }
 
         #region Navegación
@@ -175,8 +180,42 @@ namespace Vista
                     s.Boton.Visible = PermisoService.Instancia.PuedeAccederFormulario(s.Permiso);
         }
 
+        // Llega desde el hilo del timer de ControladoraSesiones: hay que pasar al hilo de UI.
+        private void SesionExpirada(string mensaje)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                BeginInvoke(() => CerrarPorExpiracion(mensaje));
+            }
+            catch (InvalidOperationException)
+            {
+                // El formulario se cerró entre la verificación y el BeginInvoke.
+            }
+        }
+
+        private void CerrarPorExpiracion(string mensaje)
+        {
+            if (IsDisposed) return;
+            sesionExpirada = true;
+
+            // Un diálogo modal abierto (p. ej. FrmUsuario) impediría que el menú se cierre.
+            foreach (var modal in Application.OpenForms.Cast<Form>().Where(f => f != this && f.Modal).ToList())
+                modal.Close();
+
+            MessageBox.Show(this, mensaje, "Sesión expirada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Close();   // FrmIniciarSesión vuelve a mostrarse al terminar el ShowDialog
+        }
+
         private void FrmMenu_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            // Con la sesión vencida no se puede guardar nada: si la sección se niega a cerrar, se la libera igual.
+            if (sesionExpirada && !CerrarSeccionActual())
+            {
+                seccionActual?.Dispose();
+                seccionActual = null;
+            }
+
             // La sección activa puede tener cambios sin guardar o una venta registrándose.
             if (!CerrarSeccionActual())
             {
