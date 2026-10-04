@@ -1,3 +1,4 @@
+using Vista.Comun;
 using Controladora;
 using Modelo;
 using ScottPlot;
@@ -233,7 +234,7 @@ namespace Vista
                 cbProveedor.DataSource = opcionesProveedor;
                 cbProveedorOrden.DataSource = opcionesProveedor.ToList();
             }
-            catch (OperationCanceledException) { return; }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { return; }
             catch (Exception ex)
             {
                 MostrarError("No se pudieron cargar los filtros.", ex);
@@ -299,7 +300,7 @@ namespace Vista
                     if (fila.DataBoundItem is ProductoInventarioDTO p && seleccion.Contains(p.LibroId))
                         fila.Selected = true;
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token)) { }
             catch (Exception ex)
             {
                 MostrarError("No se pudo cargar el inventario.", ex);
@@ -379,7 +380,7 @@ namespace Vista
                         if (fila.DataBoundItem is OrdenReposicionDTO o && o.OrdenId == id)
                             dgvOrdenes.CurrentCell = fila.Cells.Cast<DataGridViewCell>().First(c => c.Visible);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { }
             catch (Exception ex)
             {
                 MostrarError("No se pudieron cargar las órdenes de reposición.", ex);
@@ -660,7 +661,7 @@ namespace Vista
             {
                 await accion();
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { }
             catch (Exception ex)
             {
                 MostrarError(mensajeError, ex);

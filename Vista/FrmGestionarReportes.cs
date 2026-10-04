@@ -194,7 +194,7 @@ namespace Vista
                 cbCategoria.DataSource = new[] { Todos }.Concat(categorias.Result).ToList();
                 cbProveedor.DataSource = new[] { Todos }.Concat(proveedores.Result.Select(p => new OpcionDTO(p.ProveedorId, p.ToString()))).ToList();
             }
-            catch (OperationCanceledException) { return; }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { return; }
             catch (Exception ex)
             {
                 ManejadorErrores.Mostrar(this, ex, "No se pudieron cargar los filtros.");
@@ -331,7 +331,7 @@ namespace Vista
                 if (token.IsCancellationRequested) return;
                 Mostrar(resultado);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token)) { }
             catch (Exception ex)
             {
                 ManejadorErrores.Mostrar(this, ex, "No se pudo generar el reporte.");

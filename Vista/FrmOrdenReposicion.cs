@@ -1,3 +1,4 @@
+using Vista.Comun;
 using Controladora;
 using Modelo;
 using Servicios;
@@ -122,7 +123,7 @@ namespace Vista
                     }
                 }
             }
-            catch (OperationCanceledException) { return; }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token)) { return; }
             catch (Exception ex)
             {
                 MostrarError("No se pudo cargar la orden.", ex);
@@ -754,7 +755,7 @@ namespace Vista
             {
                 await accion();
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token)) { }
             catch (Exception ex)
             {
                 MostrarError(mensajeError, ex);

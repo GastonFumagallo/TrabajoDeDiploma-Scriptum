@@ -138,7 +138,7 @@ namespace Vista.Seguridad
                 await CargarListadoAsync();
                 txtBuscar.Focus();
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsForm.Token)) { }
             catch (Exception ex)
             {
                 ManejadorErrores.Mostrar(this, ex, "No se pudo abrir la gestión de grupos.");
@@ -204,7 +204,7 @@ namespace Vista.Seguridad
                     MostrarFicha(null);
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token)) { }
             catch (Exception ex)
             {
                 ManejadorErrores.Mostrar(this, ex, "No se pudo cargar el listado de grupos.");
@@ -273,7 +273,7 @@ namespace Vista.Seguridad
                 }
                 MostrarFicha(tareaFicha.Result, tareaUsuarios.Result);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token)) { }
             catch (Exception ex)
             {
                 ManejadorErrores.Mostrar(this, ex, "No se pudo abrir el grupo.");
@@ -366,7 +366,7 @@ namespace Vista.Seguridad
                 else
                     validador.Limpiar(txtNombre);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsForm.Token)) { }
             catch
             {
                 // Es sólo una ayuda: el servicio vuelve a validar al guardar.

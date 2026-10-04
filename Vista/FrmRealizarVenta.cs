@@ -1,3 +1,4 @@
+using Vista.Comun;
 using Controladora;
 using Controladora.MetodoPagoStrategy;
 using Modelo;
@@ -105,7 +106,7 @@ namespace Vista
                 panelCarga.Enabled = panelCierre.Enabled = panelEncabezado.Enabled = false;
                 await Task.WhenAll(CargarCatalogoAsync(), CargarClientesAsync(), CargarMetodosPagoAsync());
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token)) { }
             catch (Exception ex)
             {
                 MostrarError("No se pudieron cargar los datos del punto de venta.", ex);
@@ -233,7 +234,7 @@ namespace Vista
                 // Se recarga la lista y el cliente recién creado (o reactivado) queda seleccionado.
                 await CargarClientesAsync(nuevoId);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token)) { }
             catch (Exception ex)
             {
                 MostrarError("No se pudo actualizar la lista de clientes.", ex);
@@ -797,7 +798,7 @@ namespace Vista
                 if (imprimir == DialogResult.Yes)
                     await ImprimirUltimoTicketAsync();
             }
-            catch (OperationCanceledException)
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token))
             {
                 // El formulario se está cerrando.
             }
@@ -828,7 +829,7 @@ namespace Vista
                 using var frmTicket = new FrmTickets(ticket);
                 frmTicket.ShowDialog(this);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token)) { }
             catch (Exception ex)
             {
                 MostrarError("La venta está registrada, pero no se pudo generar el ticket. Puede reimprimirlo desde Gestionar ventas.", ex);

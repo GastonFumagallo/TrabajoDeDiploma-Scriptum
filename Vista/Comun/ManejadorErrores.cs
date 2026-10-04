@@ -38,10 +38,32 @@ namespace Vista.Comun
                 default:
                     Registrar(ex);
                     MessageBox.Show(owner,
-                        $"{contexto}\n\nOcurrió un error inesperado. Si se repite, avisá a soporte (el detalle quedó registrado en {RutaLog}).",
+                        $"{contexto}\n\nOcurrió un error inesperado. Si se repite, avisá a soporte (el detalle quedó registrado en {RutaLog})." +
+                        DetalleDesarrollo(ex),
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
             }
+        }
+
+        /// <summary>
+        /// true si la excepción es la consecuencia de haber cancelado <paramref name="token"/> (una carga más nueva
+        /// reemplazó a la anterior, o se cerró el formulario). Se decide por el token y no por el tipo: al cancelar una
+        /// consulta en curso, SqlClient a veces lanza <see cref="TaskCanceledException"/>, pero otras una
+        /// <c>SqlException</c> ("Operación cancelada por el usuario") o una <see cref="InvalidOperationException"/>.
+        /// Uso: <c>catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token)) { }</c>
+        /// </summary>
+        public static bool EsCancelacion(Exception ex, CancellationToken token) =>
+            ex is OperationCanceledException || token.IsCancellationRequested;
+
+        /// <summary>En compilaciones Debug, el tipo y el mensaje de la excepción más interna; en Release, nada.</summary>
+        private static string DetalleDesarrollo(Exception ex)
+        {
+#if DEBUG
+            var raiz = ex.GetBaseException();
+            return $"\n\n[Debug] {raiz.GetType().Name}: {raiz.Message}";
+#else
+            return string.Empty;
+#endif
         }
 
         private static void Registrar(Exception ex)

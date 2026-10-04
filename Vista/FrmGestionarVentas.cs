@@ -1,3 +1,4 @@
+using Vista.Comun;
 using Controladora;
 using Modelo;
 using Servicios;
@@ -165,7 +166,7 @@ namespace Vista
                 cbMetodoPago.DisplayMember = nameof(MetodoPago.MP_Nombre);
                 cbMetodoPago.ValueMember = nameof(MetodoPago.MP_ID);
             }
-            catch (OperationCanceledException) { return; }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { return; }
             catch (Exception ex)
             {
                 MostrarError("No se pudieron cargar los medios de pago.", ex);
@@ -299,7 +300,7 @@ namespace Vista
                 if (seleccionarVentaId is int id)
                     SeleccionarVenta(id);
             }
-            catch (OperationCanceledException)
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, token))
             {
                 // Hubo una carga más nueva o se está cerrando el formulario.
             }
@@ -406,7 +407,7 @@ namespace Vista
                 using var frmTicket = new FrmTickets(ticket);
                 frmTicket.ShowDialog(this);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { }
             catch (Exception ex)
             {
                 MostrarError("No se pudo generar el comprobante.", ex);
@@ -464,7 +465,7 @@ namespace Vista
 
                 await CargarVentasAsync(venta.VENDTO_ID);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { }
             catch (Exception ex)
             {
                 MostrarError("No se pudo anular la venta. No se realizó ningún cambio.", ex);
@@ -549,7 +550,7 @@ namespace Vista
                 MessageBox.Show($"Se exportaron {todas.Ventas.Count} venta(s).", "Exportación completa",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            catch (OperationCanceledException) { }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { }
             catch (IOException ex)
             {
                 MostrarError("No se pudo escribir el archivo. ¿Está abierto en Excel?", ex);
