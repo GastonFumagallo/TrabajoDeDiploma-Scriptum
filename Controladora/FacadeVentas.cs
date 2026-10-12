@@ -37,6 +37,7 @@ namespace Modelo
 
         /// <summary>
         /// Registra la venta completa en una única transacción:
+        /// 0) exige una caja abierta (bloqueada hasta el Commit) y asocia la venta a ella;
         /// 1) valida cliente, medio de pago, libros y pago suficiente con los datos actuales de la base;
         /// 2) descuenta stock con un UPDATE condicional (no puede quedar negativo aunque vendan dos cajas a la vez);
         /// 3) inserta cabecera, detalles y pago; 4) Commit. Ante cualquier falla, Rollback y no queda nada a medias.
@@ -57,6 +58,12 @@ namespace Modelo
 
             try
             {
+                // 0. Caja abierta, bloqueada hasta el Commit: si en paralelo se está cerrando, esta venta espera y
+                //    después no encuentra caja (no puede entrar a una caja cerrada ni quedar afuera de su arqueo).
+                var caja = await Controladora.CajaService.BloquearCajaAbiertaAsync(db, ct);
+                if (caja == null)
+                    return await FallarAsync(tx, Controladora.CajaService.MensajeSinCajaAbierta);
+
                 // 1. Cliente (o Consumidor Final por defecto).
                 var cliente = solicitud.ClienteId is int clienteId
                     ? await db.Clientes.FirstOrDefaultAsync(c => c.CLI_ID == clienteId, ct)
@@ -121,6 +128,7 @@ namespace Modelo
                     VEN_IVA = calculo.IVA,
                     VEN_Total = calculo.Total,
                     VEN_Usuario = solicitud.Usuario,
+                    CAJ_ID = caja.CAJ_ID,
                 };
 
                 foreach (var (libroId, cantidad) in cantidades)

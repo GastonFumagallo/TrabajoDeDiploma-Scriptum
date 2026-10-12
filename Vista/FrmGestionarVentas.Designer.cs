@@ -34,6 +34,8 @@ namespace Vista
             btnVerTicket = new Button();
             btnAnularVenta = new Button();
             btnExportar = new Button();
+            btnCaja = new Button();
+            lblCaja = new Label();
             btnSalir = new Button();
             panelFiltros = new Panel();
             chkFechas = new CheckBox();
@@ -77,6 +79,8 @@ namespace Vista
             panelAcciones.Controls.Add(btnVerTicket);
             panelAcciones.Controls.Add(btnAnularVenta);
             panelAcciones.Controls.Add(btnExportar);
+            panelAcciones.Controls.Add(btnCaja);
+            panelAcciones.Controls.Add(lblCaja);
             panelAcciones.Controls.Add(btnSalir);
             panelAcciones.Dock = DockStyle.Top;
             panelAcciones.Location = new Point(0, 0);
@@ -128,6 +132,25 @@ namespace Vista
             btnExportar.TabIndex = 4;
             btnExportar.Text = "Exportar listado";
             btnExportar.UseVisualStyleBackColor = true;
+            //
+            // btnCaja
+            //
+            btnCaja.Location = new Point(660, 6);
+            btnCaja.Name = "btnCaja";
+            btnCaja.Size = new Size(120, 68);
+            btnCaja.TabIndex = 5;
+            btnCaja.Text = "Abrir caja";
+            btnCaja.UseVisualStyleBackColor = true;
+            //
+            // lblCaja
+            //
+            lblCaja.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            lblCaja.Location = new Point(790, 6);
+            lblCaja.Name = "lblCaja";
+            lblCaja.Size = new Size(495, 68);
+            lblCaja.TabIndex = 6;
+            lblCaja.Tag = "BLANCO";
+            lblCaja.TextAlign = ContentAlignment.MiddleLeft;
             //
             // btnSalir
             //
@@ -467,6 +490,8 @@ namespace Vista
         private Button btnVerTicket;
         private Button btnAnularVenta;
         private Button btnExportar;
+        private Button btnCaja;
+        private Label lblCaja;
         private Button btnSalir;
         private Panel panelFiltros;
         private CheckBox chkFechas;
