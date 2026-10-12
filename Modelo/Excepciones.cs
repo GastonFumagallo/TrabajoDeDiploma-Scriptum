@@ -57,4 +57,13 @@ namespace Modelo
 
         public string Permiso { get; }
     }
+
+    /// <summary>
+    /// La operación no se puede hacer en el estado actual (no son datos mal cargados): por ejemplo, abrir una caja
+    /// cuando ya hay una abierta, o cerrar una que ya se cerró. El mensaje es apto para el usuario.
+    /// </summary>
+    public sealed class ReglaNegocioException : Exception
+    {
+        public ReglaNegocioException(string mensaje) : base(mensaje) { }
+    }
 }

@@ -67,6 +67,112 @@ namespace Modelo.Migrations
                     b.ToTable("GrupoUsuario");
                 });
 
+            modelBuilder.Entity("Modelo.Caja", b =>
+                {
+                    b.Property<int>("CAJ_ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CAJ_ID"));
+
+                    b.Property<int?>("CAJ_CantidadVentas")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CAJ_Diferencia")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CAJ_EfectivoContado")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CAJ_EfectivoEsperado")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CAJ_Estado")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CAJ_FechaApertura")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CAJ_FechaCierre")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("CAJ_MontoInicial")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CAJ_Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("CAJ_TotalVentas")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CAJ_UsuarioAperturaId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CAJ_UsuarioCierreId")
+                        .HasColumnType("int");
+
+                    b.HasKey("CAJ_ID");
+
+                    b.HasIndex("CAJ_Estado")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cajas_UnaAbierta")
+                        .HasFilter("[CAJ_Estado] = 0");
+
+                    b.HasIndex("CAJ_FechaApertura");
+
+                    b.HasIndex("CAJ_UsuarioAperturaId");
+
+                    b.HasIndex("CAJ_UsuarioCierreId");
+
+                    b.ToTable("Cajas", t =>
+                        {
+                            t.HasCheckConstraint("CK_Cajas_Cierre", "([CAJ_Estado] = 0 AND [CAJ_FechaCierre] IS NULL AND [CAJ_UsuarioCierreId] IS NULL) OR ([CAJ_Estado] = 1 AND [CAJ_FechaCierre] IS NOT NULL AND [CAJ_UsuarioCierreId] IS NOT NULL AND [CAJ_EfectivoContado] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Cajas_EfectivoContado", "[CAJ_EfectivoContado] IS NULL OR [CAJ_EfectivoContado] >= 0");
+
+                            t.HasCheckConstraint("CK_Cajas_MontoInicial", "[CAJ_MontoInicial] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Modelo.CajaTotalMedio", b =>
+                {
+                    b.Property<int>("CTM_ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CTM_ID"));
+
+                    b.Property<int>("CAJ_ID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CTM_Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("CTM_EsEfectivo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("CTM_MedioPago")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<decimal>("CTM_Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MP_ID")
+                        .HasColumnType("int");
+
+                    b.HasKey("CTM_ID");
+
+                    b.HasIndex("MP_ID");
+
+                    b.HasIndex("CAJ_ID", "MP_ID")
+                        .IsUnique();
+
+                    b.ToTable("CajaTotalesMedio");
+                });
+
             modelBuilder.Entity("Modelo.Cliente", b =>
                 {
                     b.Property<int>("CLI_ID")
@@ -810,6 +916,9 @@ namespace Modelo.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VEN_ID"));
 
+                    b.Property<int?>("CAJ_ID")
+                        .HasColumnType("int");
+
                     b.Property<int>("CLI_ID")
                         .HasColumnType("int");
 
@@ -856,6 +965,8 @@ namespace Modelo.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("VEN_ID");
+
+                    b.HasIndex("CAJ_ID");
 
                     b.HasIndex("CLI_ID");
 
@@ -907,6 +1018,43 @@ namespace Modelo.Migrations
                         .HasForeignKey("UsuariosUSU_ID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Modelo.Caja", b =>
+                {
+                    b.HasOne("Modelo.Seguridad.Usuario", "CAJ_UsuarioApertura")
+                        .WithMany()
+                        .HasForeignKey("CAJ_UsuarioAperturaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Modelo.Seguridad.Usuario", "CAJ_UsuarioCierre")
+                        .WithMany()
+                        .HasForeignKey("CAJ_UsuarioCierreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CAJ_UsuarioApertura");
+
+                    b.Navigation("CAJ_UsuarioCierre");
+                });
+
+            modelBuilder.Entity("Modelo.CajaTotalMedio", b =>
+                {
+                    b.HasOne("Modelo.Caja", "CTM_Caja")
+                        .WithMany("CAJ_TotalesPorMedio")
+                        .HasForeignKey("CAJ_ID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Modelo.MetodoPago", "CTM_MetodoPago")
+                        .WithMany()
+                        .HasForeignKey("MP_ID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CTM_Caja");
+
+                    b.Navigation("CTM_MetodoPago");
                 });
 
             modelBuilder.Entity("Modelo.Cliente", b =>
@@ -1099,6 +1247,11 @@ namespace Modelo.Migrations
 
             modelBuilder.Entity("Modelo.Venta", b =>
                 {
+                    b.HasOne("Modelo.Caja", "VEN_Caja")
+                        .WithMany("CAJ_Ventas")
+                        .HasForeignKey("CAJ_ID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Modelo.Cliente", "VEN_Cliente")
                         .WithMany()
                         .HasForeignKey("CLI_ID")
@@ -1111,9 +1264,18 @@ namespace Modelo.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("VEN_Caja");
+
                     b.Navigation("VEN_Cliente");
 
                     b.Navigation("VEN_MetodoPago");
+                });
+
+            modelBuilder.Entity("Modelo.Caja", b =>
+                {
+                    b.Navigation("CAJ_TotalesPorMedio");
+
+                    b.Navigation("CAJ_Ventas");
                 });
 
             modelBuilder.Entity("Modelo.Genero", b =>

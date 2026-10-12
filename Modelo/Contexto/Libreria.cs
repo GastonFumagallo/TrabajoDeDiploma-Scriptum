@@ -43,6 +43,8 @@ namespace Modelo.Contexto
         public virtual DbSet<DetalleOrdenReposicion> DetallesOrdenReposicion { get; set; }
         public virtual DbSet<MovimientoStock> MovimientosStock { get; set; }
         public virtual DbSet<AuditoriaSeguridad> AuditoriaSeguridad { get; set; }
+        public virtual DbSet<Caja> Cajas { get; set; }
+        public virtual DbSet<CajaTotalMedio> CajaTotalesMedio { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -130,6 +132,60 @@ namespace Modelo.Contexto
                 .HasOne(pl => pl.PL_Libro)
                 .WithMany(l => l.LIB_Proveedores)
                 .HasForeignKey(pl => pl.LIB_ID);
+
+            // ── Control de caja ──────────────────────────────────────────────────────────
+            modelBuilder.Entity<Caja>(caja =>
+            {
+                caja.HasOne(c => c.CAJ_UsuarioApertura)
+                    .WithMany()
+                    .HasForeignKey(c => c.CAJ_UsuarioAperturaId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                caja.HasOne(c => c.CAJ_UsuarioCierre)
+                    .WithMany()
+                    .HasForeignKey(c => c.CAJ_UsuarioCierreId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Nunca más de una caja abierta: lo garantiza la base aunque dos puestos abran a la vez.
+                caja.HasIndex(c => c.CAJ_Estado)
+                    .IsUnique()
+                    .HasFilter("[CAJ_Estado] = 0")
+                    .HasDatabaseName("UX_Cajas_UnaAbierta");
+
+                caja.HasIndex(c => c.CAJ_FechaApertura);
+
+                caja.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_Cajas_MontoInicial", "[CAJ_MontoInicial] >= 0");
+                    t.HasCheckConstraint("CK_Cajas_EfectivoContado", "[CAJ_EfectivoContado] IS NULL OR [CAJ_EfectivoContado] >= 0");
+                    // Abierta: sin datos de cierre. Cerrada: con fecha, usuario y efectivo contado.
+                    t.HasCheckConstraint("CK_Cajas_Cierre",
+                        "([CAJ_Estado] = 0 AND [CAJ_FechaCierre] IS NULL AND [CAJ_UsuarioCierreId] IS NULL) OR " +
+                        "([CAJ_Estado] = 1 AND [CAJ_FechaCierre] IS NOT NULL AND [CAJ_UsuarioCierreId] IS NOT NULL AND [CAJ_EfectivoContado] IS NOT NULL)");
+                });
+            });
+
+            modelBuilder.Entity<CajaTotalMedio>(total =>
+            {
+                total.HasOne(t => t.CTM_Caja)
+                    .WithMany(c => c.CAJ_TotalesPorMedio)
+                    .HasForeignKey(t => t.CAJ_ID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                total.HasOne(t => t.CTM_MetodoPago)
+                    .WithMany()
+                    .HasForeignKey(t => t.MP_ID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                total.HasIndex(t => new { t.CAJ_ID, t.MP_ID }).IsUnique();
+            });
+
+            // Una caja con ventas no se puede borrar (el historial de ventas manda).
+            modelBuilder.Entity<Venta>()
+                .HasOne(v => v.VEN_Caja)
+                .WithMany(c => c.CAJ_Ventas)
+                .HasForeignKey(v => v.CAJ_ID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Las propiedades CLI_ID, MP_ID, VEN_ID, LIB_ID y GEN_ID no siguen la convención de nombres de EF
             // (<Navegación><PK>), así que hay que declararlas como FK explícitamente; si no, EF crea columnas sombra.

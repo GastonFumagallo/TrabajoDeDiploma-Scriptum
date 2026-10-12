@@ -40,13 +40,17 @@ namespace Vista
         /// <summary>Opción "Todos" del combo de medios de pago.</summary>
         private static readonly MetodoPago TodosLosMedios = new() { MP_ID = 0, MP_Nombre = "Todos" };
 
+        private CajaActivaDTO? cajaActiva;
+        private bool puedeAbrirCaja, puedeCerrarCaja;
+
         public FrmGestionarVentas()
         {
             InitializeComponent();
             ConfigurarGrilla();
             ConfigurarFiltros();
 
-            btnRealizarVenta.Click += (_, _) => NuevaVenta();
+            btnRealizarVenta.Click += async (_, _) => await NuevaVentaAsync();
+            btnCaja.Click += async (_, _) => await AbrirOCerrarCajaAsync();
             btnVerDetalles.Click += (_, _) => VerDetalle();
             btnVerTicket.Click += async (_, _) => await ReimprimirAsync();
             btnAnularVenta.Click += async (_, _) => await AnularAsync();
@@ -172,6 +176,7 @@ namespace Vista
                 MostrarError("No se pudieron cargar los medios de pago.", ex);
             }
 
+            await ActualizarCajaAsync();
             inicializando = false;
             await CargarVentasAsync();
         }
@@ -183,6 +188,9 @@ namespace Vista
             btnVerDetalles.Visible = PermisoService.Instancia.TienePermiso("VerDetalles");
             btnAnularVenta.Visible = PermisoService.Instancia.TienePermiso("AnularVenta");
             btnExportar.Visible = PermisoService.Instancia.TienePermiso("ExportarVentas");
+            puedeAbrirCaja = PermisoService.Instancia.TienePermiso("AbrirCaja");
+            puedeCerrarCaja = PermisoService.Instancia.TienePermiso("CerrarCaja");
+            btnCaja.Visible = puedeAbrirCaja || puedeCerrarCaja;
         }
 
         #endregion
@@ -357,10 +365,89 @@ namespace Vista
             btnPaginaSiguiente.Enabled = !ocupado && paginaActual < totalPaginas;
         }
 
-        private void NuevaVenta()
+        /// <summary>
+        /// Abre el punto de venta sólo si hay una caja abierta. Si no la hay, ofrece abrirla (si el usuario puede)
+        /// o le avisa que la tiene que abrir un responsable. La venta igual se vuelve a validar en FacadeVentas.
+        /// </summary>
+        private async Task NuevaVentaAsync()
         {
+            if (!btnRealizarVenta.Visible) return;
+
+            await ActualizarCajaAsync();   // otro puesto pudo abrirla o cerrarla mientras tanto
+            if (cajaActiva == null)
+            {
+                if (!puedeAbrirCaja)
+                {
+                    MessageBox.Show(this, "No hay una caja abierta. Pedile a un responsable que la abra para poder vender.",
+                        "Caja cerrada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (MessageBox.Show(this, "No hay una caja abierta y no se pueden registrar ventas sin una.\n\n¿Abrir la caja ahora?",
+                        "Caja cerrada", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes
+                    || !await AbrirCajaAsync())
+                    return;
+            }
+
             if (TopLevelControl is FrmMenu principal)
                 principal.Navegar<FrmRealizarVenta>();
+        }
+
+        // ── Caja ──────────────────────────────────────────────────────────────
+
+        private async Task ActualizarCajaAsync()
+        {
+            try
+            {
+                cajaActiva = await CajaService.Instancia.ObtenerCajaActivaAsync(ctsFormulario.Token);
+            }
+            catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, ctsFormulario.Token)) { return; }
+            catch (Exception ex)
+            {
+                MostrarError("No se pudo consultar el estado de la caja.", ex);
+                return;
+            }
+
+            if (cajaActiva is { } caja)
+            {
+                lblCaja.Text = $"● {caja.Descripcion}\nMonto inicial: {caja.MontoInicial:C2}";
+                btnCaja.Text = "Cerrar caja";
+                btnCaja.Enabled = puedeCerrarCaja;
+            }
+            else
+            {
+                lblCaja.Text = "○ Caja cerrada: no se pueden registrar ventas hasta abrirla.";
+                btnCaja.Text = "Abrir caja";
+                btnCaja.Enabled = puedeAbrirCaja;
+            }
+        }
+
+        private async Task AbrirOCerrarCajaAsync()
+        {
+            await ActualizarCajaAsync();
+            if (cajaActiva == null)
+                await AbrirCajaAsync();
+            else
+                await CerrarCajaAsync(cajaActiva.Id);
+        }
+
+        /// <returns>true si se abrió la caja.</returns>
+        private async Task<bool> AbrirCajaAsync()
+        {
+            if (!puedeAbrirCaja) return false;
+            using var dialogo = new ControlCaja.FrmAperturaCaja();
+            var abierta = dialogo.ShowDialog(this) == DialogResult.OK;
+            await ActualizarCajaAsync();
+            return abierta && cajaActiva != null;
+        }
+
+        private async Task CerrarCajaAsync(int cajaId)
+        {
+            if (!puedeCerrarCaja) return;
+            using var dialogo = new ControlCaja.FrmCierreCaja(cajaId);
+            if (dialogo.ShowDialog(this) == DialogResult.OK && dialogo.Resultado is { } resultado)
+                MessageBox.Show(this, ControlCaja.FrmCierreCaja.Resumir(resultado), "Caja cerrada",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            await ActualizarCajaAsync();
         }
 
         private void VerDetalle()

@@ -8,8 +8,11 @@ namespace Controladora.MetodoPagoStrategy
     public static class MetodoPagoStrategyFactory
     {
         /// <summary>true si el medio de pago es efectivo (el único que admite monto recibido y vuelto).</summary>
-        public static bool EsEfectivo(MetodoPago metodoPago) =>
-            string.Equals(metodoPago?.MP_Nombre?.Trim(), "Efectivo", StringComparison.OrdinalIgnoreCase);
+        public static bool EsEfectivo(MetodoPago metodoPago) => EsEfectivo(metodoPago?.MP_Nombre);
+
+        /// <summary>Mismo criterio, a partir del nombre del medio (ej. al agrupar pagos para el arqueo de caja).</summary>
+        public static bool EsEfectivo(string? nombreMedioPago) =>
+            string.Equals(nombreMedioPago?.Trim(), "Efectivo", StringComparison.OrdinalIgnoreCase);
 
         public static IMetodoPagoStrategy Obtener(MetodoPago metodoPago)
         {

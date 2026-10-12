@@ -75,6 +75,7 @@ namespace Vista
         private readonly System.Windows.Forms.Timer timerBusqueda = new() { Interval = 150 };
         private readonly System.Windows.Forms.Timer timerReloj = new() { Interval = 30_000 };
         private readonly CancellationTokenSource cts = new();
+        private CajaActivaDTO? caja;   // la que muestra el encabezado; la venta se valida igual en FacadeVentas
 
         public FrmRealizarVenta()
         {
@@ -104,7 +105,7 @@ namespace Vista
             {
                 UseWaitCursor = true;
                 panelCarga.Enabled = panelCierre.Enabled = panelEncabezado.Enabled = false;
-                await Task.WhenAll(CargarCatalogoAsync(), CargarClientesAsync(), CargarMetodosPagoAsync());
+                await Task.WhenAll(CargarCatalogoAsync(), CargarClientesAsync(), CargarMetodosPagoAsync(), CargarCajaAsync());
             }
             catch (Exception cancelada) when (ManejadorErrores.EsCancelacion(cancelada, cts.Token)) { }
             catch (Exception ex)
@@ -118,6 +119,12 @@ namespace Vista
             }
 
             txtBuscar.Focus();
+        }
+
+        private async Task CargarCajaAsync()
+        {
+            caja = await CajaService.Instancia.ObtenerCajaActivaAsync(cts.Token);
+            ActualizarEncabezado();
         }
 
         private async Task CargarCatalogoAsync()
@@ -171,7 +178,9 @@ namespace Vista
         private void ActualizarEncabezado()
         {
             lblFecha.Text = $"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}";
-            lblUsuario.Text = $"Usuario: {UsuarioActual}";
+            lblUsuario.Text = caja is null
+                ? $"Usuario: {UsuarioActual} · ⚠ SIN CAJA ABIERTA (no se puede cobrar)"
+                : $"Usuario: {UsuarioActual} · Caja #{caja.Id}";
             lblComprobante.Text = ultimaVentaId is int id
                 ? $"Comprobante: nuevo · última {Venta.FormatearComprobante(id)}"
                 : "Comprobante: nuevo (se numera al registrar)";
@@ -715,6 +724,10 @@ namespace Vista
             if (carrito.Count == 0)
                 return Avisar("Agregue al menos un libro a la venta.", txtBuscar);
 
+            // Aviso temprano (la regla real la aplica FacadeVentas dentro de la transacción de la venta).
+            if (caja == null)
+                return Avisar("No hay una caja abierta: no se pueden registrar ventas. Abrila desde Ventas (botón \"Abrir caja\").", txtBuscar);
+
             if (clienteActual == null)
                 return Avisar("Seleccione un cliente o use \"Consumidor final\".", cbCliente);
 
@@ -778,6 +791,7 @@ namespace Vista
                     MessageBox.Show(resultado.Mensaje + "\n\nLa venta NO se registró.", "Venta no registrada",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     await CargarCatalogoAsync();   // stock y precios frescos para corregir el carrito
+                    await CargarCajaAsync();       // por si la rechazó porque otro puesto cerró la caja
                     Recalcular();
                     return;
                 }

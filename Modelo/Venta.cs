@@ -46,6 +46,10 @@ namespace Modelo
         [StringLength(100)]
         public string? VEN_Usuario { get; set; }
 
+        /// <summary>Caja abierta en la que se registró. Null sólo en ventas anteriores al control de caja.</summary>
+        public int? CAJ_ID { get; set; }
+        public Caja? VEN_Caja { get; set; }
+
         public ICollection<DetalleVenta> VEN_Detalles { get; set; } = new List<DetalleVenta>();
         public ICollection<PagoVenta> VEN_Pagos { get; set; } = new List<PagoVenta>();
 
