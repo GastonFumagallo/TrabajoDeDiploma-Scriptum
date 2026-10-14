@@ -40,4 +40,74 @@ namespace Modelo
             _ => "Sin diferencia",
         };
     }
+
+    // ── Historial de cajas cerradas ───────────────────────────────
+
+    /// <summary>
+    /// Criterios del historial de cajas cerradas. El período se aplica sobre la fecha de apertura (el día del
+    /// turno). El usuario coincide si abrió o cerró la caja.
+    /// </summary>
+    public sealed class FiltroHistorialCajas
+    {
+        public DateTime? Desde { get; set; }
+        public DateTime? Hasta { get; set; }
+        public int? UsuarioId { get; set; }
+    }
+
+    /// <summary>Una caja cerrada en la grilla del historial. Los importes son la foto guardada al cerrar.</summary>
+    public sealed class CajaHistorialDTO
+    {
+        public int Id { get; init; }
+        public string Numero => $"#{Id}";
+        public DateTime FechaApertura { get; init; }
+        public string UsuarioApertura { get; init; } = "";
+        public DateTime FechaCierre { get; init; }
+        public string UsuarioCierre { get; init; } = "";
+        public decimal MontoInicial { get; init; }
+        public int CantidadVentas { get; init; }
+        public decimal TotalVentas { get; init; }
+        public decimal EfectivoEsperado { get; init; }
+        public decimal EfectivoContado { get; init; }
+        /// <summary>Contado − esperado: positivo = sobrante, negativo = faltante.</summary>
+        public decimal Diferencia { get; init; }
+        public string Resultado => ArqueoCajaDTO.DescribirDiferencia(Diferencia);
+        public string? Observaciones { get; init; }
+    }
+
+    /// <summary>Usuario que abrió o cerró alguna caja (opciones del filtro por cajero).</summary>
+    public sealed record UsuarioCajaDTO(int Id, string Nombre)
+    {
+        public override string ToString() => Nombre;
+    }
+
+    /// <summary>Totales del historial filtrado (todas las páginas), calculados en SQL.</summary>
+    public sealed class MetricasHistorialCajas
+    {
+        public int CantidadCajas { get; init; }
+        public decimal TotalRecaudado { get; init; }
+        /// <summary>Suma de sobrantes y faltantes: un sobrante puede tapar un faltante, por eso se informan aparte.</summary>
+        public decimal DiferenciaNeta { get; init; }
+        public decimal TotalFaltantes { get; init; }
+        public int CajasConFaltante { get; init; }
+    }
+
+    public sealed class PaginaHistorialCajas
+    {
+        public IReadOnlyList<CajaHistorialDTO> Cajas { get; init; } = Array.Empty<CajaHistorialDTO>();
+        public MetricasHistorialCajas Metricas { get; init; } = new();
+        public int TotalRegistros => Metricas.CantidadCajas;
+    }
+
+    /// <summary>Detalle de una caja cerrada: desglose por medio de pago y observaciones del cierre.</summary>
+    public sealed class CajaDetalleDTO
+    {
+        public CajaHistorialDTO Caja { get; init; } = new();
+        public IReadOnlyList<TotalMedioCajaDTO> TotalesPorMedio { get; init; } = Array.Empty<TotalMedioCajaDTO>();
+        public string? Observaciones => Caja.Observaciones;
+        /// <summary>
+        /// Ventas de la caja anuladas después del cierre. El arqueo guardado no las descuenta (es una foto),
+        /// pero conviene verlas al auditar.
+        /// </summary>
+        public int VentasAnuladasLuego { get; init; }
+    }
 }

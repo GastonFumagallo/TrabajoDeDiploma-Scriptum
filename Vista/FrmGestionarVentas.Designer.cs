@@ -35,6 +35,7 @@ namespace Vista
             btnAnularVenta = new Button();
             btnExportar = new Button();
             btnCaja = new Button();
+            btnHistorialCajas = new Button();
             lblCaja = new Label();
             btnSalir = new Button();
             panelFiltros = new Panel();
@@ -80,6 +81,7 @@ namespace Vista
             panelAcciones.Controls.Add(btnAnularVenta);
             panelAcciones.Controls.Add(btnExportar);
             panelAcciones.Controls.Add(btnCaja);
+            panelAcciones.Controls.Add(btnHistorialCajas);
             panelAcciones.Controls.Add(lblCaja);
             panelAcciones.Controls.Add(btnSalir);
             panelAcciones.Dock = DockStyle.Top;
@@ -142,12 +144,21 @@ namespace Vista
             btnCaja.Text = "Abrir caja";
             btnCaja.UseVisualStyleBackColor = true;
             //
+            // btnHistorialCajas
+            //
+            btnHistorialCajas.Location = new Point(786, 6);
+            btnHistorialCajas.Name = "btnHistorialCajas";
+            btnHistorialCajas.Size = new Size(120, 68);
+            btnHistorialCajas.TabIndex = 6;
+            btnHistorialCajas.Text = "Historial de cajas";
+            btnHistorialCajas.UseVisualStyleBackColor = true;
+            //
             // lblCaja
             //
             lblCaja.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            lblCaja.Location = new Point(790, 6);
+            lblCaja.Location = new Point(912, 6);
             lblCaja.Name = "lblCaja";
-            lblCaja.Size = new Size(495, 68);
+            lblCaja.Size = new Size(373, 68);
             lblCaja.TabIndex = 6;
             lblCaja.Tag = "BLANCO";
             lblCaja.TextAlign = ContentAlignment.MiddleLeft;
@@ -491,6 +502,7 @@ namespace Vista
         private Button btnAnularVenta;
         private Button btnExportar;
         private Button btnCaja;
+        private Button btnHistorialCajas;
         private Label lblCaja;
         private Button btnSalir;
         private Panel panelFiltros;

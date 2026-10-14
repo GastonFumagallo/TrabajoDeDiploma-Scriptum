@@ -5,6 +5,7 @@ using Modelo;
 using Modelo.Contexto;
 using Modelo.Seguridad;
 using Servicios;
+using System.Linq.Expressions;
 
 namespace Controladora
 {
@@ -21,6 +22,15 @@ namespace Controladora
 
         /// <summary>Cierra la caja con el efectivo contado. Devuelve el arqueo definitivo con la diferencia.</summary>
         Task<ArqueoCajaDTO> CerrarCajaAsync(int cajaId, decimal efectivoContado, string? observaciones, CancellationToken ct = default);
+
+        /// <summary>Una página del historial de cajas cerradas, con las métricas de todo el resultado filtrado.</summary>
+        Task<PaginaHistorialCajas> BuscarHistorialAsync(FiltroHistorialCajas filtro, int pagina, int tamañoPagina, CancellationToken ct = default);
+
+        /// <summary>Desglose por medio de pago y observaciones de una caja cerrada.</summary>
+        Task<CajaDetalleDTO> ObtenerDetalleCajaAsync(int cajaId, CancellationToken ct = default);
+
+        /// <summary>Usuarios que abrieron o cerraron alguna caja (opciones del filtro por cajero).</summary>
+        Task<IReadOnlyList<UsuarioCajaDTO>> ObtenerUsuariosConCajasAsync(CancellationToken ct = default);
     }
 
     /// <summary>
@@ -213,6 +223,121 @@ namespace Controladora
                 .FirstOrDefaultAsync(ct);
             return caja?.CAJ_Estado == EstadoCaja.Abierta ? caja : null;   // se cerró entre la búsqueda y el bloqueo
         }
+
+        #region Historial de cajas cerradas
+
+        /// <summary>Permiso para consultar el historial (incluye diferencias de arqueo: es información sensible).</summary>
+        public const string PermisoHistorial = "VerHistorialCajas";
+        public const int TamañoPaginaMaximo = 500;
+
+        // Proyección única para la grilla y el detalle. Lee la foto guardada al cerrar, no recalcula.
+        private static readonly Expression<Func<Caja, CajaHistorialDTO>> AHistorial = c => new CajaHistorialDTO
+        {
+            Id = c.CAJ_ID,
+            FechaApertura = c.CAJ_FechaApertura,
+            UsuarioApertura = c.CAJ_UsuarioApertura.USU_Nombre,
+            FechaCierre = c.CAJ_FechaCierre!.Value,
+            UsuarioCierre = c.CAJ_UsuarioCierre!.USU_Nombre,
+            MontoInicial = c.CAJ_MontoInicial,
+            CantidadVentas = c.CAJ_CantidadVentas ?? 0,
+            TotalVentas = c.CAJ_TotalVentas ?? 0m,
+            EfectivoEsperado = c.CAJ_EfectivoEsperado ?? 0m,
+            EfectivoContado = c.CAJ_EfectivoContado ?? 0m,
+            Diferencia = c.CAJ_Diferencia ?? 0m,
+            Observaciones = c.CAJ_Observaciones,
+        };
+
+        public async Task<PaginaHistorialCajas> BuscarHistorialAsync(FiltroHistorialCajas filtro, int pagina, int tamañoPagina,
+            CancellationToken ct = default)
+        {
+            PermisoService.Instancia.Exigir(PermisoHistorial);
+            if (filtro.Desde is DateTime desde && filtro.Hasta is DateTime hasta && desde.Date > hasta.Date)
+                throw new ValidacionException("Desde", "El período es inválido: \"desde\" es posterior a \"hasta\".");
+            tamañoPagina = Math.Clamp(tamañoPagina, 1, TamañoPaginaMaximo);
+            pagina = Math.Max(1, pagina);
+
+            await using var db = new Libreria();
+            var query = FiltrarHistorial(db.Cajas.AsNoTracking(), filtro);
+
+            // Una sola consulta agregada sobre todo el resultado (no sólo la página visible).
+            var metricas = await query
+                .GroupBy(_ => 1)
+                .Select(g => new MetricasHistorialCajas
+                {
+                    CantidadCajas = g.Count(),
+                    TotalRecaudado = g.Sum(c => c.CAJ_TotalVentas) ?? 0m,
+                    DiferenciaNeta = g.Sum(c => c.CAJ_Diferencia) ?? 0m,
+                    TotalFaltantes = g.Sum(c => c.CAJ_Diferencia < 0 ? -c.CAJ_Diferencia : 0m) ?? 0m,
+                    CajasConFaltante = g.Count(c => c.CAJ_Diferencia < 0),
+                })
+                .FirstOrDefaultAsync(ct) ?? new MetricasHistorialCajas();
+
+            var cajas = await query
+                .OrderByDescending(c => c.CAJ_FechaApertura).ThenByDescending(c => c.CAJ_ID)
+                .Skip((pagina - 1) * tamañoPagina).Take(tamañoPagina)
+                .Select(AHistorial)
+                .ToListAsync(ct);
+
+            return new PaginaHistorialCajas { Cajas = cajas, Metricas = metricas };
+        }
+
+        public async Task<CajaDetalleDTO> ObtenerDetalleCajaAsync(int cajaId, CancellationToken ct = default)
+        {
+            PermisoService.Instancia.Exigir(PermisoHistorial);
+
+            await using var db = new Libreria();
+            var caja = await db.Cajas.AsNoTracking()
+                .Where(c => c.CAJ_ID == cajaId && c.CAJ_Estado == EstadoCaja.Cerrada)
+                .Select(AHistorial)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new ReglaNegocioException($"La caja #{cajaId} no existe o todavía no se cerró.");
+
+            var totales = await db.CajaTotalesMedio.AsNoTracking()
+                .Where(t => t.CAJ_ID == cajaId)
+                .OrderByDescending(t => t.CTM_EsEfectivo).ThenBy(t => t.CTM_MedioPago)
+                .Select(t => new TotalMedioCajaDTO(t.MP_ID, t.CTM_MedioPago, t.CTM_EsEfectivo, t.CTM_Cantidad, t.CTM_Total))
+                .ToListAsync(ct);
+
+            var anuladasLuego = await db.Ventas.CountAsync(
+                v => v.CAJ_ID == cajaId && v.VEN_Anulada && v.VEN_FechaAnulacion > caja.FechaCierre, ct);
+
+            return new CajaDetalleDTO { Caja = caja, TotalesPorMedio = totales, VentasAnuladasLuego = anuladasLuego };
+        }
+
+        public async Task<IReadOnlyList<UsuarioCajaDTO>> ObtenerUsuariosConCajasAsync(CancellationToken ct = default)
+        {
+            PermisoService.Instancia.Exigir(PermisoHistorial);
+
+            await using var db = new Libreria();
+            return await db.Usuarios.AsNoTracking()
+                .Where(u => db.Cajas.Any(c => c.CAJ_Estado == EstadoCaja.Cerrada &&
+                                              (c.CAJ_UsuarioAperturaId == u.USU_ID || c.CAJ_UsuarioCierreId == u.USU_ID)))
+                .OrderBy(u => u.USU_Nombre)
+                .Select(u => new UsuarioCajaDTO(u.USU_ID, u.USU_Nombre))
+                .ToListAsync(ct);
+        }
+
+        /// <summary>Cajas cerradas; período sobre la fecha de apertura; el usuario coincide si abrió o cerró.</summary>
+        private static IQueryable<Caja> FiltrarHistorial(IQueryable<Caja> query, FiltroHistorialCajas filtro)
+        {
+            query = query.Where(c => c.CAJ_Estado == EstadoCaja.Cerrada);
+
+            if (filtro.Desde is DateTime desde)
+                query = query.Where(c => c.CAJ_FechaApertura >= desde.Date);
+
+            if (filtro.Hasta is DateTime hasta)
+            {
+                var hastaExclusivo = hasta.Date.AddDays(1);   // incluye todo el día "hasta"
+                query = query.Where(c => c.CAJ_FechaApertura < hastaExclusivo);
+            }
+
+            if (filtro.UsuarioId is int usuarioId)
+                query = query.Where(c => c.CAJ_UsuarioAperturaId == usuarioId || c.CAJ_UsuarioCierreId == usuarioId);
+
+            return query;
+        }
+
+        #endregion
 
         public const string MensajeSinCajaAbierta =
             "No hay una caja abierta. Abrí la caja desde Ventas antes de registrar ventas.";
