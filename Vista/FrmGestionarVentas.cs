@@ -51,6 +51,7 @@ namespace Vista
 
             btnRealizarVenta.Click += async (_, _) => await NuevaVentaAsync();
             btnCaja.Click += async (_, _) => await AbrirOCerrarCajaAsync();
+            btnHistorialCajas.Click += (_, _) => { if (TopLevelControl is FrmMenu principal) principal.Navegar<ControlCaja.FrmHistorialCajas>(); };
             btnVerDetalles.Click += (_, _) => VerDetalle();
             btnVerTicket.Click += async (_, _) => await ReimprimirAsync();
             btnAnularVenta.Click += async (_, _) => await AnularAsync();
@@ -191,6 +192,7 @@ namespace Vista
             puedeAbrirCaja = PermisoService.Instancia.TienePermiso("AbrirCaja");
             puedeCerrarCaja = PermisoService.Instancia.TienePermiso("CerrarCaja");
             btnCaja.Visible = puedeAbrirCaja || puedeCerrarCaja;
+            btnHistorialCajas.Visible = PermisoService.Instancia.TienePermiso(CajaService.PermisoHistorial);
         }
 
         #endregion

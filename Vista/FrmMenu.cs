@@ -3,6 +3,7 @@ using Modelo.Seguridad;
 using Servicios;
 using System.Runtime.InteropServices;
 using Vista.Comun;
+using Vista.ControlCaja;
 using Vista.Seguridad;
 using Vista.Theme;
 
@@ -46,6 +47,7 @@ namespace Vista
                 [typeof(FrmGestionarProveedores)] = new(btnProveedores, nameof(FrmGestionarProveedores)),
                 [typeof(FrmGestionarVentas)] = new(btnVentas, nameof(FrmGestionarVentas), "VENTAS"),
                 [typeof(FrmRealizarVenta)] = new(btnVentas, nameof(FrmGestionarVentas)),
+                [typeof(FrmHistorialCajas)] = new(btnVentas, nameof(FrmGestionarVentas), "HISTORIAL DE CAJAS"),
                 [typeof(FrmGestionarReportes)] = new(btnReportes, nameof(FrmGestionarReportes)),
                 [typeof(FrmGestionarInventario)] = new(btnGestionarInventario, nameof(FrmGestionarInventario)),
                 [typeof(FrmGestionarUsuarios)] = new(btnUsuarios, nameof(FrmGestionarUsuarios)),
