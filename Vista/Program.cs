@@ -16,7 +16,7 @@ namespace Vista
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-            FuturisticTheme.Initialize();
+            ScriptumTheme.Initialize();
             // El timeout de sesión cuenta desde la última interacción con mouse o teclado.
             Application.AddMessageFilter(new FiltroActividadUsuario());
             Application.Run(new FrmIniciarSesión());

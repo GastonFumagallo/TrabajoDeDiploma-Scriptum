@@ -15,6 +15,11 @@ namespace Vista
         {
             InitializeComponent();
             SetWelcomeText($"Bienvenido, {GetNombreUsuarioParaSaludo()}");
+            var hoy = DateTime.Today.ToString("dddd d 'de' MMMM 'de' yyyy");
+            lblFecha.Text = char.ToUpper(hoy[0]) + hoy[1..];
+            // La tarjeta de bienvenida queda centrada en la sección, sea cual sea el tamaño de la ventana.
+            Resize += (_, _) => CentrarTarjeta();
+            CentrarTarjeta();
         }
 
         public string GetNombreUsuarioParaSaludo()
@@ -41,8 +46,12 @@ namespace Vista
                 return "Usuario";
             }
         }
-        // lblInicio ocupa todo el formulario (Dock = Fill, AutoSize = false, TextAlign = MiddleCenter):
-        // el texto queda centrado y se reacomoda solo al redimensionar o al cambiar su longitud.
+        private void CentrarTarjeta() =>
+            panelBienvenida.Location = new Point(Math.Max(0, (ClientSize.Width - panelBienvenida.Width) / 2),
+                                                 Math.Max(0, (ClientSize.Height - panelBienvenida.Height) / 2 - 30));
+
+        // lblInicio es una etiqueta de alto fijo dentro de la tarjeta (AutoSize = false, TextAlign = BottomLeft):
+        // los saludos largos se parten en dos líneas sin mover el resto de la tarjeta.
         public void SetWelcomeText(string text) => lblInicio.Text = text;
     }
 

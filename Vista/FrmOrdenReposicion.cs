@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
+using Vista.Theme;
 
 namespace Vista
 {
@@ -254,10 +255,10 @@ namespace Vista
             lblEstadoOrden.Text = $"Estado: {EstadoOrden.Descripcion(estado)}";
             lblEstadoOrden.ForeColor = estado switch
             {
-                EstadoOrden.Solicitada => Color.LightSkyBlue,
-                EstadoOrden.Recibida => Color.LightGreen,
-                EstadoOrden.Cancelada => Color.LightGray,
-                _ => Color.Gold,
+                EstadoOrden.Solicitada => ScriptumTheme.Primario,
+                EstadoOrden.Recibida => ScriptumTheme.Exito,
+                EstadoOrden.Cancelada => ScriptumTheme.TextoSuave,
+                _ => ScriptumTheme.Advertencia,
             };
 
             cbProveedor.Enabled = editable;

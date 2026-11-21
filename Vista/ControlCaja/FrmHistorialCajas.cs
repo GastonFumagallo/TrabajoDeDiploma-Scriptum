@@ -2,6 +2,7 @@ using Controladora;
 using Modelo;
 using Servicios;
 using Vista.Comun;
+using Vista.Theme;
 
 namespace Vista.ControlCaja
 {
@@ -21,7 +22,7 @@ namespace Vista.ControlCaja
         private static readonly Color FondoFaltante = Color.FromArgb(255, 228, 228);
         private static readonly Color TextoFaltante = Color.FromArgb(170, 0, 0);
         private static readonly Color TextoSobrante = Color.FromArgb(150, 95, 0);
-        private static readonly Color MetricaFaltante = Color.FromArgb(255, 175, 175);   // legible sobre el panel oscuro
+        private static readonly Color MetricaFaltante = ScriptumTheme.Error;   // legible sobre la tarjeta blanca
 
         private readonly ICajaService servicio = CajaService.Instancia;
         private readonly BindingSource bsCajas = new();
@@ -247,11 +248,11 @@ namespace Vista.ControlCaja
             lblCantidad.Text = m.CantidadCajas.ToString("N0");
             lblRecaudado.Text = m.TotalRecaudado.ToString("C2");
             lblDiferencia.Text = m.DiferenciaNeta.ToString("C2");
-            lblDiferencia.ForeColor = m.DiferenciaNeta < 0 ? MetricaFaltante : Color.White;
+            lblDiferencia.ForeColor = m.DiferenciaNeta < 0 ? MetricaFaltante : ScriptumTheme.TextoTitulo;
             lblFaltantes.Text = m.CajasConFaltante == 0
                 ? "Sin faltantes"
                 : $"{m.TotalFaltantes:C2} en {m.CajasConFaltante} caja(s)";
-            lblFaltantes.ForeColor = m.CajasConFaltante > 0 ? MetricaFaltante : Color.White;
+            lblFaltantes.ForeColor = m.CajasConFaltante > 0 ? MetricaFaltante : ScriptumTheme.TextoTitulo;
         }
 
         #endregion

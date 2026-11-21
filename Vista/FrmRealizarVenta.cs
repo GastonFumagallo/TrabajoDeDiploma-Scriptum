@@ -11,6 +11,7 @@ using System.Drawing;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
+using Vista.Theme;
 
 namespace Vista
 {
@@ -413,7 +414,7 @@ namespace Vista
 
             int disponible = StockDisponible(libro);
             lblSeleccion.Text = $"{libro.Titulo} — ${libro.Precio:N2} — Stock disponible: {disponible}";
-            lblSeleccion.ForeColor = disponible > 0 ? Color.White : Color.Gold;
+            lblSeleccion.ForeColor = disponible > 0 ? ScriptumTheme.TextoSubtitulo : ScriptumTheme.Advertencia;
             numCantidad.Value = 1;
 
             if (moverFoco)
@@ -480,7 +481,7 @@ namespace Vista
         private void MostrarEstado(string mensaje, bool esError)
         {
             lblEstado.Text = mensaje;
-            lblEstado.ForeColor = esError ? Color.Gold : Color.White;
+            lblEstado.ForeColor = esError ? ScriptumTheme.Error : ScriptumTheme.TextoSubtitulo;
         }
 
         #endregion
@@ -681,13 +682,13 @@ namespace Vista
             {
                 lblVueltoTitulo.Text = "Falta";
                 lblVuelto.Text = Moneda(calculo.Total - calculo.Recibido);
-                lblVuelto.ForeColor = Color.Gold;
+                lblVuelto.ForeColor = ScriptumTheme.Error;
             }
             else
             {
                 lblVueltoTitulo.Text = "Vuelto";
                 lblVuelto.Text = Moneda(calculo.Vuelto);
-                lblVuelto.ForeColor = Color.White;
+                lblVuelto.ForeColor = ScriptumTheme.Exito;
             }
 
             btnRegistrar.Enabled = !procesando && carrito.Count > 0;
