@@ -63,6 +63,34 @@ namespace Vista.Comun
                 }
             }
         }
+
+        public const string TituloErrorCelda = "Valor no válido";
+        private static bool avisoPendiente;
+
+        /// <summary>
+        /// Avisa que el valor de una celda editable no es válido: lo marca en la celda y lo informa con un mensaje.
+        /// No alcanza con <c>Rows[i].ErrorText</c>, porque las grillas ocultan el encabezado de filas, donde se dibuja
+        /// ese ícono; y el ícono de la celda queda tapado mientras se la sigue editando. El mensaje se abre al terminar
+        /// la validación (BeginInvoke) y nunca hay dos abiertos a la vez.
+        /// </summary>
+        public static void MostrarErrorCelda(DataGridView dgv, int fila, int columna, string mensaje)
+        {
+            dgv.Rows[fila].Cells[columna].ErrorText = mensaje;
+            if (avisoPendiente || !dgv.IsHandleCreated) return;
+            avisoPendiente = true;
+            dgv.BeginInvoke(() =>
+            {
+                try { MessageBox.Show(dgv.FindForm(), mensaje, TituloErrorCelda, MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                finally { avisoPendiente = false; }
+            });
+        }
+
+        /// <summary>Quita la marca de <see cref="MostrarErrorCelda"/> cuando la celda termina de editarse o el valor es válido.</summary>
+        public static void LimpiarErrorCelda(DataGridView dgv, int fila, int columna)
+        {
+            if (fila >= 0 && fila < dgv.Rows.Count && columna >= 0 && columna < dgv.Columns.Count)
+                dgv.Rows[fila].Cells[columna].ErrorText = string.Empty;
+        }
     }
 
     /// <summary>Exporta cualquier grilla a CSV (Excel): columnas visibles, en el orden y formato que se ven.</summary>

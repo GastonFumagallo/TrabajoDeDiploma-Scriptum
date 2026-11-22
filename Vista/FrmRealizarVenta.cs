@@ -506,7 +506,7 @@ namespace Vista
             dgvCarrito.CellValidating += dgvCarrito_CellValidating;
             dgvCarrito.CellEndEdit += (_, e) =>
             {
-                dgvCarrito.Rows[e.RowIndex].ErrorText = string.Empty;
+                GrillaHelper.LimpiarErrorCelda(dgvCarrito, e.RowIndex, e.ColumnIndex);
                 carrito.ResetItem(e.RowIndex);
                 Recalcular();
             };
@@ -593,12 +593,12 @@ namespace Vista
 
             if (!int.TryParse(Convert.ToString(e.FormattedValue), out int nueva) || nueva < 1)
             {
-                dgvCarrito.Rows[e.RowIndex].ErrorText = "La cantidad debe ser un número entero mayor a 0.";
+                GrillaHelper.MostrarErrorCelda(dgvCarrito, e.RowIndex, e.ColumnIndex, "La cantidad debe ser un número entero mayor a 0.");
                 e.Cancel = true;
             }
             else if (nueva > linea.StockMaximo)
             {
-                dgvCarrito.Rows[e.RowIndex].ErrorText = $"Stock disponible: {linea.StockMaximo}.";
+                GrillaHelper.MostrarErrorCelda(dgvCarrito, e.RowIndex, e.ColumnIndex, $"Stock disponible: {linea.StockMaximo}.");
                 e.Cancel = true;
             }
         }
