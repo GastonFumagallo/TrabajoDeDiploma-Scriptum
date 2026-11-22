@@ -113,6 +113,21 @@ namespace Vista.Theme
             }
         }
 
+        /// <summary>
+        /// true si el primer fondo no transparente desde <paramref name="contenedor"/> hacia arriba es oscuro.
+        /// Los contenedores se tematizan antes que sus hijos, así que su color ya es el definitivo.
+        /// </summary>
+        public static bool EsFondoOscuro(Control? contenedor)
+        {
+            for (var c = contenedor; c != null; c = c.Parent)
+            {
+                if (c.BackColor.A == 0) continue;
+                var f = c.BackColor;
+                return 0.299 * f.R + 0.587 * f.G + 0.114 * f.B < 140;
+            }
+            return false;
+        }
+
         private static void ApplyToControl(Control control)
         {
             if (control is null) return;
@@ -165,8 +180,9 @@ namespace Vista.Theme
                     }
                     else
                     {
+                        // El color sigue al fondo real: blanco sobre paneles y grupos oscuros, oscuro sobre el fondo claro.
                         l.BackColor = Color.Transparent;
-                        l.ForeColor = Text;
+                        l.ForeColor = EsFondoOscuro(l.Parent) ? White : Text;
                     }
 
                     break;
@@ -187,16 +203,9 @@ namespace Vista.Theme
                     break;
 
                 case GroupBox gb:
+                    // Sus etiquetas se pintan después, al recorrer los hijos (caso Label, según el fondo).
                     gb.BackColor = Panel;
                     gb.ForeColor = White;
-                    foreach (Control control1 in gb.Controls)
-                    {
-                        if (control1 is Label lbl)
-                        {
-                            lbl.ForeColor = White;
-                        }
-                    }
-
                     break;
 
                 case PictureBox pic:

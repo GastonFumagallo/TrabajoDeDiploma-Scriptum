@@ -21,6 +21,9 @@ namespace Controladora
         public const string GrupoCreado = "GRUPO_CREADO";
         public const string GrupoModificado = "GRUPO_MODIFICADO";
         public const string GrupoEliminado = "GRUPO_ELIMINADO";
+        public const string ResguardoRealizado = "RESGUARDO_REALIZADO";
+        public const string ResguardoVerificado = "RESGUARDO_VERIFICADO";
+        public const string BaseRestaurada = "BASE_RESTAURADA";
 
         /// <param name="usuario">Por defecto, el usuario logueado. En el login, el nombre que se tipeó.</param>
         public static void Registrar(string evento, string? detalle = null, string? usuario = null)

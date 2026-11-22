@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Modelo;
 using Modelo.Contexto;
 using Servicios;
@@ -397,7 +397,7 @@ namespace Controladora
                     if (mov != null) db.MovimientosStock.Add(mov);
 
                     if (s.ActualizarCostos)
-                        await ActualizarCostoAsync(db, detalle.DOR_Libro, orden.OR_PROV_ID, Math.Round(costo, 2), ct);
+                        await ActualizarCostoAsync(db, detalle.DOR_Libro, orden.OR_PROV_ID, Math.Round(costo, 2), referencia, ct);
                 }
 
                 await db.SaveChangesAsync(ct);
@@ -417,10 +417,18 @@ namespace Controladora
         }
 
         /// <summary>Actualiza el último costo del libro y el precio pactado con el proveedor (o crea la asociación).</summary>
-        private static async Task ActualizarCostoAsync(Libreria db, Libro libro, int proveedorId, decimal costo, CancellationToken ct)
+        private static async Task ActualizarCostoAsync(Libreria db, Libro libro, int proveedorId, decimal costo, string? referencia, CancellationToken ct)
         {
             if (libro.LIB_PrecioCosto != costo)
+            {
+                // Trazabilidad del costo que actualiza la recepción.
+                var filas = AuditoriaLibros.Comparar(
+                    new Dictionary<string, string?> { ["Precio de costo"] = AuditoriaLibros.Moneda(libro.LIB_PrecioCosto) },
+                    new Dictionary<string, string?> { ["Precio de costo"] = AuditoriaLibros.Moneda(costo) },
+                    OperacionAuditoriaLibro.RecepcionOrden, AuditoriaLibros.UsuarioActual, DateTime.Now, referencia);
+                AuditoriaLibros.Registrar(db, libro, filas);
                 libro.LIB_PrecioCosto = costo;
+            }
 
             var asociacion = await db.ProveedoresLibros.FirstOrDefaultAsync(pl => pl.PROV_ID == proveedorId && pl.LIB_ID == libro.LIB_ID, ct);
             if (asociacion == null)
