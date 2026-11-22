@@ -321,7 +321,7 @@ namespace Vista
             dgvItems.CellValidating += dgvItems_CellValidating;
             dgvItems.CellEndEdit += (_, e) =>
             {
-                dgvItems.Rows[e.RowIndex].ErrorText = string.Empty;
+                GrillaHelper.LimpiarErrorCelda(dgvItems, e.RowIndex, e.ColumnIndex);
                 items.ResetItem(e.RowIndex);
                 if (Editable) modificado = true;
                 Recalcular();
@@ -379,7 +379,7 @@ namespace Vista
 
             if (error != null)
             {
-                dgvItems.Rows[e.RowIndex].ErrorText = error;
+                GrillaHelper.MostrarErrorCelda(dgvItems, e.RowIndex, e.ColumnIndex, error);
                 e.Cancel = true;
             }
         }

@@ -288,7 +288,8 @@ namespace Vista
             {
                 if (dgvProveedores.Columns[e.ColumnIndex].Name != nameof(ProveedorPrecioDTO.PrecioCompra)) return;
                 bool valido = decimal.TryParse(Convert.ToString(e.FormattedValue), NumberStyles.Number, CultureInfo.CurrentCulture, out var precio) && precio > 0;
-                dgvProveedores.Rows[e.RowIndex].ErrorText = valido ? string.Empty : "El precio debe ser mayor a 0.";
+                if (valido) GrillaHelper.LimpiarErrorCelda(dgvProveedores, e.RowIndex, e.ColumnIndex);
+                else GrillaHelper.MostrarErrorCelda(dgvProveedores, e.RowIndex, e.ColumnIndex, "El precio debe ser mayor a 0.");
                 e.Cancel = !valido;
             };
             dgvProveedores.CellEndEdit += (_, _) => modificado = true;
