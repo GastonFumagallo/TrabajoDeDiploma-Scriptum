@@ -108,7 +108,7 @@ namespace Vista
                 };
                 panelForm.Controls.Add(formulario);
                 // Se tematiza ya emparentado y antes de mostrarse: así no se repinta después en Application.Idle.
-                FuturisticTheme.ApplyToForm(formulario);
+                ScriptumTheme.ApplyToForm(formulario);
                 formulario.FormClosed += Seccion_FormClosed;
                 seccionActual = formulario;
                 formulario.Show();
@@ -124,7 +124,7 @@ namespace Vista
             ReanudarRedibujado(panelForm);
 
             lblTitulo.Text = seccion?.Titulo ?? formulario.Text;
-            FuturisticTheme.SeleccionarBotonMenu(panelMenu, seccion?.Boton);
+            ScriptumTheme.SeleccionarBotonMenu(panelMenu, seccion?.Boton);
             return true;
         }
 
@@ -180,8 +180,9 @@ namespace Vista
         private void FrmMenu_Load(object sender, EventArgs e)
         {
             AplicarSeguridad();
-            FuturisticTheme.ApplyToForm(this);
-            lblTitulo.ForeColor = Color.White;
+            ScriptumTheme.ApplyToForm(this);
+            if (Sesion.Instancia.Usuario is { } usuario)
+                lblUsuarioSesion.Text = $"{usuario.USU_Nombre}  ·  {DateTime.Today:dddd d 'de' MMMM}";
             MostrarInicio();
         }
 
@@ -211,7 +212,7 @@ namespace Vista
 
         /// <summary>
         /// Apila los botones del menú: las secciones de uso diario arriba y las de administración abajo, sin dejar
-        /// huecos por los botones ocultos (sin permiso). Si no entran con 80 px de alto, se achican todos por igual.
+        /// huecos por los botones ocultos (sin permiso). Si no entran con 48 px de alto, se achican todos por igual.
         /// </summary>
         private void AcomodarMenu()
         {
@@ -229,7 +230,7 @@ namespace Vista
             int superior = panel2.Bottom;
             int disponible = panelMenu.ClientSize.Height - superior;
             int cantidad = visiblesArriba.Count + visiblesAbajo.Count;
-            int alto = cantidad == 0 ? 80 : Math.Clamp(disponible / cantidad, 44, 80);
+            int alto = cantidad == 0 ? 46 : Math.Clamp(disponible / cantidad, 44, 48);
 
             int y = superior;
             foreach (var b in visiblesArriba) { b.Anchor = AnchorStyles.Top | AnchorStyles.Left; b.SetBounds(0, y, panelMenu.ClientSize.Width, alto); y += alto; }

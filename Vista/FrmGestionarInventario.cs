@@ -349,6 +349,10 @@ namespace Vista
             grafico.Plot.Grid.MajorLineColor = ScottPlot.Colors.Transparent;
             grafico.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.EmptyTickGenerator();
             grafico.Plot.Axes.Left.TickGenerator = new ScottPlot.TickGenerators.EmptyTickGenerator();
+            // La torta ocupa el panel y se ve redonda (sin esto quedaba diminuta en un rincón del eje).
+            grafico.Plot.Axes.Frameless();
+            grafico.Plot.Axes.SetLimits(-1.7, 1.7, -1.7, 1.7);
+            grafico.Plot.Axes.SquareUnits();
             grafico.Refresh();
         }
 

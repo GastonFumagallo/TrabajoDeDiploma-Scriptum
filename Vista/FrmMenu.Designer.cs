@@ -46,6 +46,7 @@
             btnClientes = new Button();
             btnInicio = new Button();
             lblTitulo = new Label();
+            lblUsuarioSesion = new Label();
             panelTitulo = new Panel();
             panelTituloCerrar = new Panel();
             pbCerrar = new PictureBox();
@@ -78,16 +79,17 @@
             panelMenu.Dock = DockStyle.Left;
             panelMenu.Location = new Point(0, 0);
             panelMenu.Name = "panelMenu";
-            panelMenu.Size = new Size(321, 1100);
+            panelMenu.Size = new Size(248, 760);
+            panelMenu.Tag = "Sidebar";
             panelMenu.TabIndex = 0;
             // 
             // btnGestionarInventario
             // 
             btnGestionarInventario.BackColor = SystemColors.Control;
-            btnGestionarInventario.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnGestionarInventario.Location = new Point(0, 594);
+            btnGestionarInventario.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnGestionarInventario.Location = new Point(0, 370);
             btnGestionarInventario.Name = "btnGestionarInventario";
-            btnGestionarInventario.Size = new Size(321, 80);
+            btnGestionarInventario.Size = new Size(248, 46);
             btnGestionarInventario.TabIndex = 12;
             btnGestionarInventario.Text = "INVENTARIO";
             btnGestionarInventario.UseVisualStyleBackColor = false;
@@ -97,10 +99,10 @@
             // 
             btnMiClave.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnMiClave.BackColor = SystemColors.Control;
-            btnMiClave.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnMiClave.Location = new Point(0, 687);
+            btnMiClave.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnMiClave.Location = new Point(0, 512);
             btnMiClave.Name = "btnMiClave";
-            btnMiClave.Size = new Size(321, 80);
+            btnMiClave.Size = new Size(248, 46);
             btnMiClave.TabIndex = 13;
             btnMiClave.Text = "MI CLAVE";
             btnMiClave.UseVisualStyleBackColor = false;
@@ -112,7 +114,8 @@
             panel2.Dock = DockStyle.Top;
             panel2.Location = new Point(0, 0);
             panel2.Name = "panel2";
-            panel2.Size = new Size(321, 193);
+            panel2.Padding = new Padding(28, 22, 28, 14);
+            panel2.Size = new Size(248, 132);
             panel2.TabIndex = 11;
             // 
             // pictureBox1
@@ -122,8 +125,8 @@
             pictureBox1.Image = (Image)resources.GetObject("pictureBox1.Image");
             pictureBox1.Location = new Point(0, 0);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(321, 193);
-            pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
+            pictureBox1.Size = new Size(192, 96);
+            pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.TabIndex = 1;
             pictureBox1.TabStop = false;
             // 
@@ -138,10 +141,10 @@
             // 
             btnCerrarSesion.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnCerrarSesion.BackColor = SystemColors.Control;
-            btnCerrarSesion.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnCerrarSesion.Location = new Point(0, 1020);
+            btnCerrarSesion.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnCerrarSesion.Location = new Point(0, 702);
             btnCerrarSesion.Name = "btnCerrarSesion";
-            btnCerrarSesion.Size = new Size(321, 80);
+            btnCerrarSesion.Size = new Size(248, 46);
             btnCerrarSesion.TabIndex = 10;
             btnCerrarSesion.Text = "CERRAR SESIÓN";
             btnCerrarSesion.UseVisualStyleBackColor = false;
@@ -151,10 +154,10 @@
             // 
             btnGrupos.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnGrupos.BackColor = SystemColors.Control;
-            btnGrupos.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnGrupos.Location = new Point(0, 940);
+            btnGrupos.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnGrupos.Location = new Point(0, 650);
             btnGrupos.Name = "btnGrupos";
-            btnGrupos.Size = new Size(321, 80);
+            btnGrupos.Size = new Size(248, 46);
             btnGrupos.TabIndex = 9;
             btnGrupos.Text = "GRUPOS";
             btnGrupos.UseVisualStyleBackColor = false;
@@ -164,10 +167,10 @@
             // 
             btnUsuarios.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnUsuarios.BackColor = SystemColors.Control;
-            btnUsuarios.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnUsuarios.Location = new Point(0, 860);
+            btnUsuarios.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnUsuarios.Location = new Point(0, 604);
             btnUsuarios.Name = "btnUsuarios";
-            btnUsuarios.Size = new Size(321, 80);
+            btnUsuarios.Size = new Size(248, 46);
             btnUsuarios.TabIndex = 8;
             btnUsuarios.Text = "USUARIOS";
             btnUsuarios.UseVisualStyleBackColor = false;
@@ -177,10 +180,10 @@
             // 
             btnReportes.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnReportes.BackColor = SystemColors.Control;
-            btnReportes.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnReportes.Location = new Point(0, 780);
+            btnReportes.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnReportes.Location = new Point(0, 558);
             btnReportes.Name = "btnReportes";
-            btnReportes.Size = new Size(321, 80);
+            btnReportes.Size = new Size(248, 46);
             btnReportes.TabIndex = 7;
             btnReportes.Text = "REPORTES";
             btnReportes.UseVisualStyleBackColor = false;
@@ -198,10 +201,10 @@
             // btnVentas
             // 
             btnVentas.BackColor = SystemColors.Control;
-            btnVentas.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnVentas.Location = new Point(0, 513);
+            btnVentas.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnVentas.Location = new Point(0, 324);
             btnVentas.Name = "btnVentas";
-            btnVentas.Size = new Size(321, 80);
+            btnVentas.Size = new Size(248, 46);
             btnVentas.TabIndex = 5;
             btnVentas.Text = "VENTAS";
             btnVentas.UseVisualStyleBackColor = false;
@@ -210,10 +213,10 @@
             // btnProveedores
             // 
             btnProveedores.BackColor = SystemColors.Control;
-            btnProveedores.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnProveedores.Location = new Point(0, 433);
+            btnProveedores.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnProveedores.Location = new Point(0, 278);
             btnProveedores.Name = "btnProveedores";
-            btnProveedores.Size = new Size(321, 80);
+            btnProveedores.Size = new Size(248, 46);
             btnProveedores.TabIndex = 4;
             btnProveedores.Text = "PROVEEDORES";
             btnProveedores.UseVisualStyleBackColor = false;
@@ -222,10 +225,10 @@
             // btnLibros
             // 
             btnLibros.BackColor = SystemColors.Control;
-            btnLibros.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnLibros.Location = new Point(0, 353);
+            btnLibros.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnLibros.Location = new Point(0, 232);
             btnLibros.Name = "btnLibros";
-            btnLibros.Size = new Size(321, 80);
+            btnLibros.Size = new Size(248, 46);
             btnLibros.TabIndex = 3;
             btnLibros.Text = "LIBROS";
             btnLibros.UseVisualStyleBackColor = false;
@@ -234,10 +237,10 @@
             // btnClientes
             // 
             btnClientes.BackColor = SystemColors.Control;
-            btnClientes.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnClientes.Location = new Point(0, 273);
+            btnClientes.Font = new Font("Segoe UI Semibold", 10.5F);
+            btnClientes.Location = new Point(0, 186);
             btnClientes.Name = "btnClientes";
-            btnClientes.Size = new Size(321, 80);
+            btnClientes.Size = new Size(248, 46);
             btnClientes.TabIndex = 2;
             btnClientes.Text = "CLIENTES";
             btnClientes.UseVisualStyleBackColor = false;
@@ -246,11 +249,11 @@
             // btnInicio
             // 
             btnInicio.BackColor = SystemColors.Control;
-            btnInicio.Font = new Font("Segoe UI Semibold", 19.8000011F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnInicio.ForeColor = Color.Black;
-            btnInicio.Location = new Point(0, 193);
+            btnInicio.Font = new Font("Segoe UI Semibold", 10.5F);
+            
+            btnInicio.Location = new Point(0, 140);
             btnInicio.Name = "btnInicio";
-            btnInicio.Size = new Size(321, 80);
+            btnInicio.Size = new Size(248, 46);
             btnInicio.TabIndex = 1;
             btnInicio.Text = "INICIO";
             btnInicio.UseVisualStyleBackColor = false;
@@ -260,25 +263,40 @@
             // 
             lblTitulo.BackColor = SystemColors.Control;
             lblTitulo.Dock = DockStyle.Fill;
-            lblTitulo.Font = new Font("Segoe UI Semibold", 30F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblTitulo.ForeColor = Color.White;
+            lblTitulo.Font = new Font("Segoe UI", 17F, FontStyle.Bold);
+            lblTitulo.Padding = new Padding(28, 0, 0, 0);
+            lblTitulo.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitulo.ImageAlign = ContentAlignment.MiddleLeft;
             lblTitulo.Location = new Point(0, 0);
             lblTitulo.Name = "lblTitulo";
-            lblTitulo.Size = new Size(928, 60);
+            lblTitulo.Size = new Size(656, 63);
             lblTitulo.TabIndex = 2;
             lblTitulo.Tag = "Titulo";
             lblTitulo.Text = "INICIO";
-            lblTitulo.TextAlign = ContentAlignment.TopCenter;
+            lblTitulo.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // lblUsuarioSesion
+            // 
+            lblUsuarioSesion.Dock = DockStyle.Right;
+            lblUsuarioSesion.Font = new Font("Segoe UI", 9.75F);
+            lblUsuarioSesion.Location = new Point(656, 0);
+            lblUsuarioSesion.Name = "lblUsuarioSesion";
+            lblUsuarioSesion.Padding = new Padding(0, 0, 8, 0);
+            lblUsuarioSesion.Size = new Size(320, 64);
+            lblUsuarioSesion.TabIndex = 3;
+            lblUsuarioSesion.TextAlign = ContentAlignment.MiddleRight;
             // 
             // panelTitulo
             // 
-            panelTitulo.Controls.Add(panelTituloCerrar);
             panelTitulo.Controls.Add(lblTitulo);
+            panelTitulo.Controls.Add(lblUsuarioSesion);
+            panelTitulo.Controls.Add(panelTituloCerrar);
             panelTitulo.Dock = DockStyle.Top;
-            panelTitulo.Location = new Point(321, 0);
+            panelTitulo.Location = new Point(248, 0);
             panelTitulo.Name = "panelTitulo";
-            panelTitulo.Size = new Size(928, 60);
+            panelTitulo.Size = new Size(1032, 64);
+            panelTitulo.Padding = new Padding(0, 0, 0, 1);
+            panelTitulo.Tag = "Encabezado";
             panelTitulo.TabIndex = 2;
             // 
             // panelTituloCerrar
@@ -286,17 +304,18 @@
             panelTituloCerrar.BackColor = SystemColors.Control;
             panelTituloCerrar.Controls.Add(pbCerrar);
             panelTituloCerrar.Dock = DockStyle.Right;
-            panelTituloCerrar.Location = new Point(887, 0);
+            panelTituloCerrar.Location = new Point(976, 0);
             panelTituloCerrar.Name = "panelTituloCerrar";
-            panelTituloCerrar.Size = new Size(41, 60);
+            panelTituloCerrar.Size = new Size(56, 64);
             panelTituloCerrar.TabIndex = 0;
             // 
             // pbCerrar
             // 
             pbCerrar.Image = (Image)resources.GetObject("pbCerrar.Image");
-            pbCerrar.Location = new Point(13, 12);
+            pbCerrar.Cursor = Cursors.Hand;
+            pbCerrar.Location = new Point(12, 16);
             pbCerrar.Name = "pbCerrar";
-            pbCerrar.Size = new Size(16, 16);
+            pbCerrar.Size = new Size(32, 32);
             pbCerrar.SizeMode = PictureBoxSizeMode.Zoom;
             pbCerrar.TabIndex = 0;
             pbCerrar.TabStop = false;
@@ -305,25 +324,23 @@
             // panelForm
             // 
             panelForm.BackColor = SystemColors.Control;
-            panelForm.Cursor = Cursors.Hand;
+            panelForm.Padding = new Padding(24, 20, 24, 20);
             panelForm.Dock = DockStyle.Fill;
-            panelForm.Location = new Point(321, 60);
+            panelForm.Location = new Point(248, 64);
             panelForm.Name = "panelForm";
-            panelForm.Size = new Size(928, 1040);
+            panelForm.Size = new Size(1032, 696);
             panelForm.TabIndex = 3;
             // 
             // FrmMenu
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            AutoSize = true;
             BackColor = SystemColors.Control;
-            ClientSize = new Size(1249, 1100);
+            ClientSize = new Size(1280, 760);
             ControlBox = false;
             Controls.Add(panelForm);
             Controls.Add(panelTitulo);
             Controls.Add(panelMenu);
-            Cursor = Cursors.Hand;
             FormBorderStyle = FormBorderStyle.None;
             Name = "FrmMenu";
             StartPosition = FormStartPosition.CenterScreen;
@@ -355,6 +372,7 @@
         private PictureBox pictureBox1;
         private Panel panel2;
         private Label lblTitulo;
+        private Label lblUsuarioSesion;
         private Panel panelTituloCerrar;
         private Panel panelTitulo;
         private PictureBox pbCerrar;

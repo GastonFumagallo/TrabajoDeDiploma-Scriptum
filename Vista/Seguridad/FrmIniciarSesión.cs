@@ -2,6 +2,7 @@ using Controladora;
 using Modelo.Seguridad;
 using Servicios;
 using Vista.Seguridad;
+using Vista.Theme;
 using static System.Collections.Specialized.BitVector32;
 
 namespace Vista
@@ -11,6 +12,7 @@ namespace Vista
         public FrmIniciarSesión()
         {
             InitializeComponent();
+            ScriptumTheme.ApplyToForm(this);   // antes de mostrarse: sin parpadeo del estilo anterior
 
         }
         private void btnAceptar_Click(object sender, EventArgs e)

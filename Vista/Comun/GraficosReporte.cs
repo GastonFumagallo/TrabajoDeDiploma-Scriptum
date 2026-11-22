@@ -17,8 +17,8 @@ namespace Vista.Comun
         private static CultureInfo Cultura => CultureInfo.CurrentCulture;   // la que fija CulturaRegional al iniciar
 
         /// <param name="fondoOscuro">
-        /// true en pantalla: el gráfico va sobre el panel azul del tema, así que título, ejes y marcas van en blanco
-        /// y el área de datos queda blanca. false para exportar (Excel/PDF): todo sobre fondo blanco.
+        /// true en pantalla: el gráfico va sobre una tarjeta blanca del tema, con título, ejes y marcas en gris pizarra
+        /// (ScriptumTheme.Texto). false para exportar (Excel/PDF): texto negro sobre fondo blanco.
         /// </param>
         public static void Dibujar(Plot plot, GraficoReporte g, bool fondoOscuro = false)
         {
@@ -46,12 +46,13 @@ namespace Vista.Comun
             plot.Axes.AutoScale();
         }
 
-        private static readonly ScottPlot.Color FondoPanel = ScottPlot.Color.FromHex("#4C6378");   // = FuturisticTheme.Panel
+        // En pantalla el gráfico va sobre una tarjeta blanca del tema: texto gris pizarra (ScriptumTheme.Texto).
+        private static readonly ScottPlot.Color TextoTema = ScottPlot.Color.FromHex("#475569");
 
         private static void AplicarColores(Plot plot, bool fondoOscuro)
         {
-            var texto = fondoOscuro ? Colors.White : Colors.Black;
-            plot.FigureBackground.Color = fondoOscuro ? FondoPanel : Colors.White;
+            var texto = fondoOscuro ? TextoTema : Colors.Black;
+            plot.FigureBackground.Color = Colors.White;
             plot.DataBackground.Color = Colors.White;
             plot.Axes.Color(texto);                          // marco, marcas y etiquetas de los cuatro ejes
             plot.Axes.Title.Label.ForeColor = texto;

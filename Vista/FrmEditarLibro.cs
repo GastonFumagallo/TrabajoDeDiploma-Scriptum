@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Text;
 using System.Windows.Forms;
 using Vista.Comun;
+using Vista.Theme;
 
 namespace Vista
 {
@@ -196,12 +197,12 @@ namespace Vista
             if (costo <= 0 || venta <= 0)
             {
                 lblMargen.Text = "Margen: —";
-                lblMargen.ForeColor = Color.White;   // está sobre el grupo oscuro "Precios"
+                lblMargen.ForeColor = ScriptumTheme.TextoSubtitulo;
                 return;
             }
             decimal margen = (venta - costo) / venta * 100;
             lblMargen.Text = $"Margen\n{margen:N1} %\n(${venta - costo:N2})";
-            lblMargen.ForeColor = margen > 0 ? Color.LightGreen : Color.LightCoral;
+            lblMargen.ForeColor = margen > 0 ? ScriptumTheme.Exito : ScriptumTheme.Error;
         }
 
         private async Task ValidarIsbnAsync()

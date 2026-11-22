@@ -31,6 +31,7 @@ namespace Vista
             components = new System.ComponentModel.Container();
             panelEncabezado = new Panel();
             lblTituloPOS = new Label();
+            flpInfoVenta = new FlowLayoutPanel();
             lblFecha = new Label();
             lblComprobante = new Label();
             lblUsuario = new Label();
@@ -95,9 +96,7 @@ namespace Vista
             // panelEncabezado
             // 
             panelEncabezado.Controls.Add(lblTituloPOS);
-            panelEncabezado.Controls.Add(lblFecha);
-            panelEncabezado.Controls.Add(lblComprobante);
-            panelEncabezado.Controls.Add(lblUsuario);
+            panelEncabezado.Controls.Add(flpInfoVenta);
             panelEncabezado.Controls.Add(lblClienteTitulo);
             panelEncabezado.Controls.Add(cbCliente);
             panelEncabezado.Controls.Add(btnConsumidorFinal);
@@ -120,10 +119,22 @@ namespace Vista
             lblTituloPOS.Tag = "BLANCO";
             lblTituloPOS.Text = "Nueva venta";
             // 
+            // flpInfoVenta
+            // 
+            flpInfoVenta.Controls.Add(lblFecha);
+            flpInfoVenta.Controls.Add(lblComprobante);
+            flpInfoVenta.Controls.Add(lblUsuario);
+            flpInfoVenta.Location = new Point(14, 50);
+            flpInfoVenta.Name = "flpInfoVenta";
+            flpInfoVenta.Size = new Size(796, 26);
+            flpInfoVenta.TabIndex = 9;
+            flpInfoVenta.WrapContents = false;
+            // 
             // lblFecha
             // 
             lblFecha.AutoSize = true;
-            lblFecha.Location = new Point(14, 50);
+            lblFecha.Margin = new Padding(0, 0, 16, 0);
+            lblFecha.Location = new Point(0, 0);
             lblFecha.Name = "lblFecha";
             lblFecha.Size = new Size(50, 20);
             lblFecha.TabIndex = 1;
@@ -133,7 +144,8 @@ namespace Vista
             // lblComprobante
             // 
             lblComprobante.AutoSize = true;
-            lblComprobante.Location = new Point(230, 50);
+            lblComprobante.Margin = new Padding(0, 0, 16, 0);
+            lblComprobante.Location = new Point(72, 0);
             lblComprobante.Name = "lblComprobante";
             lblComprobante.Size = new Size(104, 20);
             lblComprobante.TabIndex = 2;
@@ -143,7 +155,8 @@ namespace Vista
             // lblUsuario
             // 
             lblUsuario.AutoSize = true;
-            lblUsuario.Location = new Point(560, 50);
+            lblUsuario.Margin = new Padding(0);
+            lblUsuario.Location = new Point(198, 0);
             lblUsuario.Name = "lblUsuario";
             lblUsuario.Size = new Size(62, 20);
             lblUsuario.TabIndex = 3;
@@ -153,7 +166,7 @@ namespace Vista
             // lblClienteTitulo
             // 
             lblClienteTitulo.AutoSize = true;
-            lblClienteTitulo.Location = new Point(760, 8);
+            lblClienteTitulo.Location = new Point(816, 8);
             lblClienteTitulo.Name = "lblClienteTitulo";
             lblClienteTitulo.Size = new Size(87, 20);
             lblClienteTitulo.TabIndex = 4;
@@ -165,9 +178,9 @@ namespace Vista
             cbCliente.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             cbCliente.AutoCompleteSource = AutoCompleteSource.ListItems;
             cbCliente.Font = new Font("Segoe UI", 11F);
-            cbCliente.Location = new Point(760, 34);
+            cbCliente.Location = new Point(816, 34);
             cbCliente.Name = "cbCliente";
-            cbCliente.Size = new Size(330, 33);
+            cbCliente.Size = new Size(274, 33);
             cbCliente.TabIndex = 5;
             // 
             // btnConsumidorFinal
@@ -686,6 +699,7 @@ namespace Vista
 
         private Panel panelEncabezado;
         private Label lblTituloPOS;
+        private FlowLayoutPanel flpInfoVenta;
         private Label lblFecha;
         private Label lblComprobante;
         private Label lblUsuario;

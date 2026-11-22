@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 using Vista.Comun;
+using Vista.Theme;
 
 namespace Vista
 {
@@ -55,10 +56,10 @@ namespace Vista
 
         private static readonly OpcionDTO Todos = new(0, "Todos");
 
-        // Colores de las tarjetas de KPI (se aplican al dibujar, después del tema general).
+        // Color del valor de cada tarjeta de KPI (las tarjetas son blancas, como el resto del tema).
         private static readonly Color[] ColoresKpi =
         {
-            Color.FromArgb(41, 128, 185), Color.FromArgb(39, 174, 96), Color.FromArgb(142, 68, 173), Color.FromArgb(211, 84, 0),
+            ScriptumTheme.Primario, ScriptumTheme.Exito, Color.FromArgb(124, 58, 237), ScriptumTheme.Advertencia,
         };
 
         #endregion
@@ -114,7 +115,7 @@ namespace Vista
             dgvReporte.MultiSelect = false;
             dgvReporte.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvReporte.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvReporte.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(245, 247, 250);
+            dgvReporte.AlternatingRowsDefaultCellStyle.BackColor = ScriptumTheme.GrillaAlterna;
         }
 
         private void ConfigurarGraficos()
@@ -345,7 +346,7 @@ namespace Vista
         private void Mostrar(ResultadoReporte r)
         {
             ultimo = r;
-            lblDescripcion.ForeColor = SystemColors.ControlText;
+            lblDescripcion.ForeColor = ScriptumTheme.TextoSubtitulo;
             lblDescripcion.Text = $"{r.Titulo}   ·   {r.Descripcion}   ·   {r.Filas.Count} fila(s)   ·   Generado {r.Generado:HH:mm:ss}";
             MostrarKpis(r.Kpis);
             MostrarGrilla(r);
@@ -366,8 +367,10 @@ namespace Vista
                 tlpKpis.ColumnStyles[i].Width = visible ? 100f / Math.Max(1, Math.Min(4, kpis.Count)) : 0;
                 if (!visible) continue;
 
-                tarjeta.BackColor = ColoresKpi[i];
-                foreach (var l in new[] { titulo, valor, detalle }) { l.ForeColor = Color.White; l.BackColor = Color.Transparent; }
+                tarjeta.BackColor = ScriptumTheme.Superficie;
+                foreach (var l in new[] { titulo, valor, detalle }) l.BackColor = Color.Transparent;
+                titulo.ForeColor = detalle.ForeColor = ScriptumTheme.TextoSuave;
+                valor.ForeColor = ColoresKpi[i];
                 titulo.Text = kpis[i].Titulo.ToUpper();
                 valor.Text = ExportadorReportes.FormatearValor(kpis[i].Valor, kpis[i].Formato);
                 detalle.Text = kpis[i].Detalle ?? string.Empty;
