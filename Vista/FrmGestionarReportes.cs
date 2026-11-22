@@ -418,7 +418,13 @@ namespace Vista
                 bool visible = i < definiciones.Count;
                 graficos[i].Visible = visible;
                 if (visible)
-                    GraficosReporte.Dibujar(graficos[i].Plot, definiciones[i]);
+                {
+                    // Plot nuevo en cada reporte: Plot.Clear() sólo quita las series, pero conserva ejes ocultos
+                    // (la torta los oculta), generadores de marcas, márgenes, leyenda y límites del gráfico anterior.
+                    // Por eso, según qué reporte se había generado antes, el siguiente salía aplastado o vacío.
+                    graficos[i].Reset();
+                    GraficosReporte.Dibujar(graficos[i].Plot, definiciones[i], fondoOscuro: true);
+                }
                 graficos[i].Refresh();
             }
 

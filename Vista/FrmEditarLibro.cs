@@ -196,7 +196,7 @@ namespace Vista
             if (costo <= 0 || venta <= 0)
             {
                 lblMargen.Text = "Margen: —";
-                lblMargen.ForeColor = SystemColors.ControlText;
+                lblMargen.ForeColor = Color.White;   // está sobre el grupo oscuro "Precios"
                 return;
             }
             decimal margen = (venta - costo) / venta * 100;

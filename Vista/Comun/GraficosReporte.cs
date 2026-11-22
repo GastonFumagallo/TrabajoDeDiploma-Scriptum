@@ -16,11 +16,16 @@ namespace Vista.Comun
         private static readonly IPalette Paleta = new ScottPlot.Palettes.Category10();
         private static CultureInfo Cultura => CultureInfo.CurrentCulture;   // la que fija CulturaRegional al iniciar
 
-        public static void Dibujar(Plot plot, GraficoReporte g)
+        /// <param name="fondoOscuro">
+        /// true en pantalla: el gráfico va sobre el panel azul del tema, así que título, ejes y marcas van en blanco
+        /// y el área de datos queda blanca. false para exportar (Excel/PDF): todo sobre fondo blanco.
+        /// </param>
+        public static void Dibujar(Plot plot, GraficoReporte g, bool fondoOscuro = false)
         {
             plot.Clear();
             plot.Legend.ManualItems.Clear();
             plot.Title(g.Titulo, size: 14);
+            AplicarColores(plot, fondoOscuro);
 
             if (g.Etiquetas.Length == 0 || g.Series.All(s => s.Valores.All(v => v == 0)))
             {
@@ -37,6 +42,21 @@ namespace Vista.Comun
                 case TipoGrafico.BarrasHorizontales: Barras(plot, g, horizontal: true); break;
                 case TipoGrafico.Torta: Torta(plot, g); break;
             }
+            // Límites calculados con los datos nuevos (no con los del gráfico anterior).
+            plot.Axes.AutoScale();
+        }
+
+        private static readonly ScottPlot.Color FondoPanel = ScottPlot.Color.FromHex("#4C6378");   // = FuturisticTheme.Panel
+
+        private static void AplicarColores(Plot plot, bool fondoOscuro)
+        {
+            var texto = fondoOscuro ? Colors.White : Colors.Black;
+            plot.FigureBackground.Color = fondoOscuro ? FondoPanel : Colors.White;
+            plot.DataBackground.Color = Colors.White;
+            plot.Axes.Color(texto);                          // marco, marcas y etiquetas de los cuatro ejes
+            plot.Axes.Title.Label.ForeColor = texto;
+            plot.Legend.BackgroundColor = Colors.White;      // la leyenda conserva su recuadro claro
+            plot.Legend.FontColor = Colors.Black;
         }
 
         /// <summary>Imagen PNG del gráfico (para exportar).</summary>
@@ -68,7 +88,7 @@ namespace Vista.Comun
             }
             EtiquetasEjeX(plot, g.Etiquetas);
             FormatoEje(plot.Axes.Left, g.FormatoValores);
-            if (g.Series.Count > 1) plot.ShowLegend(Alignment.UpperLeft);
+            if (g.Series.Count > 1) plot.ShowLegend(Alignment.UpperLeft); else plot.HideLegend();
             plot.Axes.Margins(bottom: 0);
         }
 
@@ -143,6 +163,7 @@ namespace Vista.Comun
             plot.ShowLegend(Alignment.MiddleRight);
             plot.Axes.Frameless();
             plot.HideGrid();
+            plot.Axes.Title.IsVisible = true;   // Frameless() también ocultaba el título de la torta
         }
 
         /// <summary>Etiquetas del eje X; si son muchas se muestra una cada k para que no se encimen.</summary>
@@ -162,6 +183,8 @@ namespace Vista.Comun
             eje.TickGenerator = new ScottPlot.TickGenerators.NumericAutomatic
             {
                 LabelFormatter = v => Formatear(v, formato),
+                // Cantidades: sin marcas intermedias (0,5 se redondeaba y aparecían "2, 2, 3, 3").
+                IntegerTicksOnly = formato == FormatoValor.Entero,
             };
         }
     }

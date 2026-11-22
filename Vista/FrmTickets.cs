@@ -27,6 +27,28 @@ namespace Vista
             MostrarTicket();
         }
 
+        /// <summary>
+        /// Agranda el comprobante y la ventana para que el ticket se lea completo sin desplazarse,
+        /// sin superar el área de trabajo de la pantalla (si no entra, queda la barra de desplazamiento).
+        /// </summary>
+        private void AjustarAltoAlTicket()
+        {
+            int lineas = rtbTicket.Lines.Length + 1;
+            int altoTexto = lineas * TextRenderer.MeasureText("Xg", rtbTicket.Font).Height + 12;
+            int extra = altoTexto - rtbTicket.ClientSize.Height;
+            if (extra <= 0) return;
+
+            var area = Screen.FromControl(this).WorkingArea;
+            int maximo = area.Height - Height;
+            extra = Math.Min(extra, Math.Max(0, maximo));
+            if (extra == 0) return;
+
+            Height += extra;
+            rtbTicket.Height += extra;
+            btnImprimir.Top += extra;
+            if (Bottom > area.Bottom) Top = Math.Max(area.Top, area.Bottom - Height);
+        }
+
         private void MostrarTicket()
         {
             rtbTicket.Font = new Font("Consolas", 12);
@@ -76,6 +98,7 @@ namespace Vista
             sb.AppendLine("Gracias por su compra");
 
             rtbTicket.Text = sb.ToString();
+            AjustarAltoAlTicket();
         }
 
         private void printDocument1_PrintPage(object sender, System.Drawing.Printing.PrintPageEventArgs e)
