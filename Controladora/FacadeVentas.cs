@@ -176,7 +176,8 @@ namespace Modelo
             }
         }
 
-        private static string? ValidarSolicitud(SolicitudVenta s)
+        /// <summary>Validaciones previas a abrir la transacción. Interno para poder probarlo (proyecto Pruebas).</summary>
+        internal static string? ValidarSolicitud(SolicitudVenta s)
         {
             if (s.Items == null || s.Items.Count == 0)
                 return "El carrito está vacío.";

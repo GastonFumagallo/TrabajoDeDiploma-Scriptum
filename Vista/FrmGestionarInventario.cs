@@ -276,7 +276,7 @@ namespace Vista
             if (inicializando) return;
 
             ctsCarga?.Cancel();
-            ctsCarga = CancellationTokenSource.CreateLinkedTokenSource(ctsFormulario.Token);
+                ctsCarga = CancellationTokenSource.CreateLinkedTokenSource(ctsFormulario.Token);
             var token = ctsCarga.Token;
             var seleccion = (reseleccionar ?? LibrosSeleccionados.Select(p => p.LibroId)).ToHashSet();
 

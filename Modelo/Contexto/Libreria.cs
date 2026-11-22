@@ -45,6 +45,7 @@ namespace Modelo.Contexto
         public virtual DbSet<AuditoriaSeguridad> AuditoriaSeguridad { get; set; }
         public virtual DbSet<Caja> Cajas { get; set; }
         public virtual DbSet<CajaTotalMedio> CajaTotalesMedio { get; set; }
+        public virtual DbSet<AuditoriaLibro> AuditoriaLibros { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -253,6 +254,19 @@ namespace Modelo.Contexto
 
             modelBuilder.Entity<MovimientoStock>()
                 .HasIndex(m => new { m.LIB_ID, m.MOV_Fecha });
+
+            // Trazabilidad de libros: no se borra con el libro (los libros tienen baja lógica igual).
+            modelBuilder.Entity<AuditoriaLibro>()
+                .HasOne(a => a.AUL_Libro)
+                .WithMany()
+                .HasForeignKey(a => a.LIB_ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AuditoriaLibro>()
+                .HasIndex(a => new { a.LIB_ID, a.AUL_Fecha });
+
+            modelBuilder.Entity<AuditoriaLibro>()
+                .HasIndex(a => a.AUL_Fecha);
         }
     }
 

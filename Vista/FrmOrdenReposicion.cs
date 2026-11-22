@@ -68,6 +68,8 @@ namespace Vista
         private FrmOrdenReposicion(int? ordenId, int? proveedorId, IReadOnlyList<int>? libroIds, bool iniciarRecepcion)
         {
             InitializeComponent();
+            // "Solicitante" va siempre a continuación de la fecha (que cambia de largo según incluya la hora).
+            lblFecha.SizeChanged += (_, _) => lblUsuario.Left = lblFecha.Right + 16;
             ordenIdInicial = ordenId;
             proveedorInicial = proveedorId;
             libroIdsIniciales = libroIds;
@@ -250,9 +252,10 @@ namespace Vista
             bool mostrarRecibido = modoRecepcion || estado == EstadoOrden.Recibida;
 
             lblNumero.Text = OrdenId is int id
-                ? $"Orden {OrdenReposicion.FormatearNumero(id)}" + (modoRecepcion ? " — Recepción de mercadería" : "")
+                ? $"Orden {OrdenReposicion.FormatearNumero(id)}"
                 : "Nueva orden de reposición";
-            lblEstadoOrden.Text = $"Estado: {EstadoOrden.Descripcion(estado)}";
+            // El modo va en la línea de estado: en el título no entra sin tapar el combo de proveedor.
+            lblEstadoOrden.Text = $"Estado: {EstadoOrden.Descripcion(estado)}" + (modoRecepcion ? " · Recepción de mercadería" : "");
             lblEstadoOrden.ForeColor = estado switch
             {
                 EstadoOrden.Solicitada => ScriptumTheme.Primario,

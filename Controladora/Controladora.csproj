@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Permite que el proyecto de pruebas unitarias acceda a los métodos internos (ej. ValidarSolicitud). -->
+    <InternalsVisibleTo Include="Pruebas" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Modelo\Modelo.csproj" />
     <ProjectReference Include="..\Servicios\Servicios.csproj" />
   </ItemGroup>

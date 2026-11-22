@@ -34,10 +34,18 @@ namespace Vista
         /// <summary>true si el usuario cerró la aplicación; false si solo cerró la sesión.</summary>
         public bool SalirDeLaAplicacion { get; private set; }
 
+        // Secciones de auditoría y resguardo (iteración 2): se crean acá con el mismo estilo que los botones del diseñador.
+        private readonly Button btnAuditoria;
+        private readonly Button btnResguardo;
+
         public FrmMenu()
         {
             InitializeComponent();
             DoubleBuffered = true;
+
+            btnAuditoria = CrearBotonMenu("AUDITORÍA", (_, _) => Navegar<Vista.Auditoria.FrmAuditoria>());
+            btnResguardo = CrearBotonMenu("RESGUARDO", (_, _) => Navegar<Vista.Auditoria.FrmResguardo>());
+            panelMenu.Resize += (_, _) => AcomodarMenu();
 
             secciones = new()
             {
@@ -52,6 +60,8 @@ namespace Vista
                 [typeof(FrmGestionarInventario)] = new(btnGestionarInventario, nameof(FrmGestionarInventario)),
                 [typeof(FrmGestionarUsuarios)] = new(btnUsuarios, nameof(FrmGestionarUsuarios)),
                 [typeof(FrmGestionarGrupos)] = new(btnGrupos, nameof(FrmGestionarGrupos)),
+                [typeof(Vista.Auditoria.FrmAuditoria)] = new(btnAuditoria, nameof(Vista.Auditoria.FrmAuditoria), "AUDITORÍA"),
+                [typeof(Vista.Auditoria.FrmResguardo)] = new(btnResguardo, nameof(Vista.Auditoria.FrmResguardo), "RESGUARDO Y RESTAURACIÓN"),
             };
 
             FormClosing += FrmMenu_FormClosing;
@@ -181,6 +191,51 @@ namespace Vista
             foreach (var s in secciones.Values)
                 if (s.Permiso != null)
                     s.Boton.Visible = PermisoService.Instancia.PuedeAccederFormulario(s.Permiso);
+            AcomodarMenu();
+        }
+
+        private Button CrearBotonMenu(string texto, EventHandler click)
+        {
+            var b = new Button
+            {
+                Text = texto,
+                Font = btnGrupos.Font,
+                BackColor = btnGrupos.BackColor,
+                UseVisualStyleBackColor = false,
+                Size = btnGrupos.Size,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+            };
+            b.Click += click;
+            panelMenu.Controls.Add(b);
+            return b;
+        }
+
+        /// <summary>
+        /// Apila los botones del menú: las secciones de uso diario arriba y las de administración abajo, sin dejar
+        /// huecos por los botones ocultos (sin permiso). Si no entran con 48 px de alto, se achican todos por igual.
+        /// </summary>
+        private void AcomodarMenu()
+        {
+            if (secciones is null) return;   // Resize durante la construcción
+
+            Button[] arriba = { btnInicio, btnClientes, btnLibros, btnProveedores, btnVentas, btnGestionarInventario };
+            Button[] abajo = { btnCerrarSesion, btnResguardo, btnAuditoria, btnGrupos, btnUsuarios, btnReportes, btnMiClave };
+
+            bool Mostrar(Button b) => b == btnInicio || b == btnMiClave || b == btnCerrarSesion
+                || secciones.Values.FirstOrDefault(s => s.Boton == b) is not { Permiso: { } p }
+                || PermisoService.Instancia.PuedeAccederFormulario(p);
+
+            var visiblesArriba = arriba.Where(Mostrar).ToList();
+            var visiblesAbajo = abajo.Where(Mostrar).ToList();
+            int superior = panel2.Bottom;
+            int disponible = panelMenu.ClientSize.Height - superior;
+            int cantidad = visiblesArriba.Count + visiblesAbajo.Count;
+            int alto = cantidad == 0 ? 46 : Math.Clamp(disponible / cantidad, 44, 48);
+
+            int y = superior;
+            foreach (var b in visiblesArriba) { b.Anchor = AnchorStyles.Top | AnchorStyles.Left; b.SetBounds(0, y, panelMenu.ClientSize.Width, alto); y += alto; }
+            y = panelMenu.ClientSize.Height;
+            foreach (var b in visiblesAbajo) { y -= alto; b.Anchor = AnchorStyles.Bottom | AnchorStyles.Left; b.SetBounds(0, y, panelMenu.ClientSize.Width, alto); }
         }
 
         // Llega desde el hilo del timer de ControladoraSesiones: hay que pasar al hilo de UI.
@@ -227,7 +282,7 @@ namespace Vista
                 return;
             }
 
-            ControladoraSesiones.Instancia.RegistrarLogout();
+            ControladoraSesiones.Instancia.RegistrarLogout(sesionExpirada ? "Inactividad" : "Normal");
             PermisoService.Instancia.Logout();
             Sesion.Instancia.Usuario = null;
         }

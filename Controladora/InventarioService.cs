@@ -210,14 +210,50 @@ namespace Controladora
                 return ResultadoOperacion.Error("Los valores deben cumplir: 0 ≤ mínimo ≤ punto de reposición ≤ óptimo, y el óptimo debe ser mayor a 0.");
 
             await using var db = new Libreria();
-            int filas = await db.Libros
-                .Where(l => l.LIB_ID == s.LibroId)
-                .ExecuteUpdateAsync(u => u
-                    .SetProperty(l => l.LIB_StockMinimo, s.StockMinimo)
-                    .SetProperty(l => l.LIB_PuntoReposicion, s.PuntoReposicion)
-                    .SetProperty(l => l.LIB_StockOptimo, s.StockOptimo), ct);
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var actual = await db.Libros.AsNoTracking()
+                    .Where(l => l.LIB_ID == s.LibroId)
+                    .Select(l => new { l.LIB_StockMinimo, l.LIB_PuntoReposicion, l.LIB_StockOptimo })
+                    .FirstOrDefaultAsync(ct);
+                if (actual == null)
+                    return await FallarAsync(tx, "El libro ya no existe.");
 
-            return filas == 0 ? ResultadoOperacion.Error("El libro ya no existe.") : ResultadoOperacion.Ok(s.LibroId);
+                await db.Libros
+                    .Where(l => l.LIB_ID == s.LibroId)
+                    .ExecuteUpdateAsync(u => u
+                        .SetProperty(l => l.LIB_StockMinimo, s.StockMinimo)
+                        .SetProperty(l => l.LIB_PuntoReposicion, s.PuntoReposicion)
+                        .SetProperty(l => l.LIB_StockOptimo, s.StockOptimo), ct);
+
+                // Trazabilidad de los parámetros que cambiaron.
+                var filas = AuditoriaLibros.Comparar(
+                    new Dictionary<string, string?>
+                    {
+                        ["Stock mínimo"] = actual.LIB_StockMinimo.ToString(),
+                        ["Punto de reposición"] = actual.LIB_PuntoReposicion.ToString(),
+                        ["Stock óptimo"] = actual.LIB_StockOptimo.ToString(),
+                    },
+                    new Dictionary<string, string?>
+                    {
+                        ["Stock mínimo"] = s.StockMinimo.ToString(),
+                        ["Punto de reposición"] = s.PuntoReposicion.ToString(),
+                        ["Stock óptimo"] = s.StockOptimo.ToString(),
+                    },
+                    OperacionAuditoriaLibro.ParametrosStock, AuditoriaLibros.UsuarioActual, DateTime.Now);
+                foreach (var f in filas) f.LIB_ID = s.LibroId;
+                db.AuditoriaLibros.AddRange(filas);
+                await db.SaveChangesAsync(ct);
+
+                await tx.CommitAsync(ct);
+                return ResultadoOperacion.Ok(s.LibroId);
+            }
+            catch
+            {
+                await RollbackSeguroAsync(tx);
+                throw;
+            }
         }
 
         #endregion

@@ -104,8 +104,10 @@ namespace Controladora.Abm
             await using var db = new Libreria();
             return await db.Proveedores.AsNoTracking()
                 .Where(p => p.PROV_Activo)
-                .Select(p => new OpcionDTO(p.PROV_ID, p.PROV_Empresa != "" ? p.PROV_Empresa : p.PER_Proveedor.PER_Nombre))
-                .OrderBy(o => o.Nombre)
+                // Se ordena antes de proyectar: EF no traduce un OrderBy sobre una propiedad del record OpcionDTO.
+                .Select(p => new { p.PROV_ID, Nombre = p.PROV_Empresa != "" ? p.PROV_Empresa : p.PER_Proveedor.PER_Nombre })
+                .OrderBy(p => p.Nombre)
+                .Select(p => new OpcionDTO(p.PROV_ID, p.Nombre))
                 .ToListAsync(ct);
         }
 

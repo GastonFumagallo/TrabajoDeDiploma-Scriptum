@@ -67,6 +67,59 @@ namespace Modelo.Migrations
                     b.ToTable("GrupoUsuario");
                 });
 
+            modelBuilder.Entity("Modelo.AuditoriaLibro", b =>
+                {
+                    b.Property<int>("AUL_ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AUL_ID"));
+
+                    b.Property<string>("AUL_Campo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime>("AUL_Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("AUL_Lote")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AUL_Operacion")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("AUL_Referencia")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AUL_Usuario")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AUL_ValorAnterior")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AUL_ValorNuevo")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("LIB_ID")
+                        .HasColumnType("int");
+
+                    b.HasKey("AUL_ID");
+
+                    b.HasIndex("AUL_Fecha");
+
+                    b.HasIndex("LIB_ID", "AUL_Fecha");
+
+                    b.ToTable("AuditoriaLibros");
+                });
+
             modelBuilder.Entity("Modelo.Caja", b =>
                 {
                     b.Property<int>("CAJ_ID")
@@ -1018,6 +1071,17 @@ namespace Modelo.Migrations
                         .HasForeignKey("UsuariosUSU_ID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Modelo.AuditoriaLibro", b =>
+                {
+                    b.HasOne("Modelo.Libro", "AUL_Libro")
+                        .WithMany()
+                        .HasForeignKey("LIB_ID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AUL_Libro");
                 });
 
             modelBuilder.Entity("Modelo.Caja", b =>

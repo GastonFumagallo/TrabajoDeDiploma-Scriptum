@@ -159,10 +159,12 @@ namespace Controladora.Abm
             try
             {
                 Libro libro;
+                Dictionary<string, string?>? antes = null;   // null = alta
                 if (dto.Id is int id)
                 {
                     libro = await db.Libros.Include(l => l.LIB_Proveedores).FirstOrDefaultAsync(l => l.LIB_ID == id, ct)
                             ?? throw new ConcurrenciaException("El libro ya no existe: otro usuario lo eliminó.");
+                    antes = await AuditoriaLibros.InstantaneaAsync(db, libro, ct);
 
                     // Concurrencia optimista: EF agrega "WHERE LIB_Version = <la que se leyó al abrir la ficha>".
                     db.Entry(libro).Property(l => l.LIB_Version).OriginalValue = dto.Version;
@@ -208,6 +210,13 @@ namespace Controladora.Abm
 
                 SincronizarProveedores(db, libro, dto.Proveedores);
 
+                // Trazabilidad: un registro por campo modificado (en el alta, todos), en la misma transacción.
+                var despues = AuditoriaLibros.Instantanea(libro,
+                    await AuditoriaLibros.NombreGeneroAsync(db, dto.GeneroId, ct),
+                    await AuditoriaLibros.DescribirProveedoresAsync(db, dto.Proveedores.Select(p => (p.ProveedorId, p.PrecioCompra)), ct));
+                AuditoriaLibros.Registrar(db, libro, AuditoriaLibros.Comparar(antes, despues,
+                    antes == null ? OperacionAuditoriaLibro.Alta : OperacionAuditoriaLibro.Modificacion, usuario, DateTime.Now));
+
                 await GuardarCambiosAsync(db, ct, campoUnico: nameof(LibroEdicionDTO.ISBN), etiquetaUnico: "ISBN");
                 await tx.CommitAsync(ct);
                 return libro.LIB_ID;
@@ -222,11 +231,34 @@ namespace Controladora.Abm
         public async Task CambiarEstadoAsync(int id, bool activo, CancellationToken ct = default)
         {
             await using var db = new Libreria();
-            int filas = await db.Libros
-                .Where(l => l.LIB_ID == id)
-                .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Activo, activo), ct);
-            if (filas == 0)
-                throw new ConcurrenciaException("El libro ya no existe.");
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                bool? anterior = await db.Libros.Where(l => l.LIB_ID == id).Select(l => (bool?)l.LIB_Activo).FirstOrDefaultAsync(ct);
+                if (anterior == null)
+                    throw new ConcurrenciaException("El libro ya no existe.");
+
+                await db.Libros
+                    .Where(l => l.LIB_ID == id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.LIB_Activo, activo), ct);
+
+                if (anterior != activo)
+                {
+                    db.AuditoriaLibros.AddRange(AuditoriaLibros.Comparar(
+                        new Dictionary<string, string?> { ["Estado"] = anterior.Value ? "Activo" : "Inactivo" },
+                        new Dictionary<string, string?> { ["Estado"] = activo ? "Activo" : "Inactivo" },
+                        activo ? OperacionAuditoriaLibro.Reactivacion : OperacionAuditoriaLibro.Baja,
+                        AuditoriaLibros.UsuarioActual, DateTime.Now)
+                        .Select(f => { f.LIB_ID = id; return f; }));
+                    await db.SaveChangesAsync(ct);
+                }
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await InventarioService.RollbackSeguroAsync(tx);
+                throw;
+            }
         }
 
         /// <summary>Reactiva un libro inactivo y devuelve su ficha para revisarla (flujo "ya existe pero está inactivo").</summary>
